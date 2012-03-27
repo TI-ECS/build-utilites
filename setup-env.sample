@@ -1,0 +1,15 @@
+export NFSROOT=/home/user/targetfs
+export PKG_CONFIG_PATH=${NFSROOT}/lib/pkgconfig:${NFSROOT}/usr/lib/pkgconfig
+export PKG_CONFIG_DEBUG_SPEW
+export PKG_CONFIG_LIBDIR=${PKG_CONFIG_PATH}
+SDK=/home/user/sdk
+export KLIB_BUILD=$SDK/linux-kernel
+export KLIB=$NFSROOT
+export CC=${CROSS_COMPILE}gcc  
+export LD=${CROSS_COMPILE}ldd
+export RANLIB=${CROSS_COMPILE}ranlib
+export AR=${CROSS_COMPILE}ar
+#this is where all needed packages will be donwloaded
+top_dir=`pwd`/wl12xx
+LS=/bin/ls
+unset PKG_CONFIG_SYSROOT_DIR
