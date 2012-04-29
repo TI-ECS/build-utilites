@@ -1,0 +1,33 @@
+#                            \\\// 
+#                           -(o o)- 
+#========================oOO==(_)==OOo=======================
+#
+# This file contains the exports needed for automating the
+# building process of the Bluetooth components
+#
+
+export ARCH="arm"
+export CROSS_COMPILE="arm-arago-linux-gnueabi-"
+export MY_PREFIX="/usr"
+export MY_SYSCONFDIR="/etc"
+export MY_LOCALSTATEDIR="/var"
+export CC="${CROSS_COMPILE}gcc"
+export CXX="${CROSS_COMPILE}g++"
+export AR="${CROSS_COMPILE}ar"
+export RANLIB="${CROSS_COMPILE}ranlib"
+export CFLAGS="-I${ROOTFS}${MY_PREFIX}/include"
+export CPPFLAGS="${CFLAGS}"
+export LDFLAGS="-L${ROOTFS}${MY_PREFIX}/lib"
+export PKG_CONFIG_SYSROOT_DIR=${ROOTFS}
+export PKG_CONFIG_PATH="${ROOTFS}${MY_PREFIX}/lib/pkgconfig"
+export PKG_CONFIG_LIBDIR=""
+export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=""
+export PKG_CONFIG_ALLOW_SYSTEM_LIBS=""
+
+# MACHINE_TYPE - The target machine type. Can have one of the following values: "am1808" , "omap3evm" , "am335x"
+export MACHINE_TYPE="am335x"
+
+export PATH="/home/moosa/V7/arago-2011.09/armv7a/bin/:$PATH"
+export ROOTFS="/home/moosa/Projects/TI/bluetooth_bringup/FS/"
+export WORK_SPACE="/home/moosa/Projects/TI/bluetooth_bringup/WORKSPACE/"
+export KLIB_BUILD="/home/moosa/Projects/TI/oe/arago-tmp/work/am335x-evm-arago-linux-gnueabi/linux-am335x-3.2-r11+gitr0+v3.2_AM335xPSP_04.06.00.06/git/"
