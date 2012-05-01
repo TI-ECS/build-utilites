@@ -38,18 +38,18 @@ function compat-wireless()
 		mkdir tmp-patches
 		cd tmp-patches
 		unzip ../Compat-wireless-patches.zip && cd -
-		for i in `$LS tmp-patches`; do patch -p1 -i tmp-patches/$i; done
+		for i in `$LS tmp-patches`; do patch -p1 -i tmp-patches/$i || exit 1; done
 		res=`./scripts/driver-select wl12xx`
 	fi
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
 		cd ${top_dir}/compat-wireless
-		make
+		make KLIB_BUILD=${KLIB_BUILD} KLIB=${NFSROOT} || exit 1
 	fi
 	if [ x"$stage" = "xinstall"  -o x"$stage" = "xall" ]
 	then
 		cd ${top_dir}/compat-wireless
-		sudo -E make install
+		sudo -E make KLIB=${NFSROOT} install || exit 1
 	fi
 	cd $top_dir
 }
@@ -66,12 +66,12 @@ function crda ()
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
 		cd ${top_dir}/crda-1.1.1
-		make USE_OPENSSL=1 all_noverify
+		make USE_OPENSSL=1 all_noverify || exit 1
 	fi
 	if [ x"$stage" = "xinstall"  -o x"$stage" = "xall" ]
 	then
 		cd ${top_dir}/crda-1.1.1
-		sudo -E DESTDIR=${NFSROOT} make USE_OPENSSL=1 install
+		sudo -E DESTDIR=${NFSROOT} make USE_OPENSSL=1 install || exit 1
 		sudo mkdir -p ${NFSROOT}/usr/lib/crda
 		sudo -E cp 2011.04.28-regulatory.bin ${NFSROOT}/usr/lib/crda/regulatory.bin
 	fi
@@ -85,18 +85,18 @@ function iw ()
 	then
 		git_clone git://git.sipsolutions.net/iw.git iw
 		cd ${top_dir}/iw
-		git reset --hard 0a236ef5f8e4ba7218aac7d0cdacf45673d5b35c
+		git reset --hard 0a236ef5f8e4ba7218aac7d0cdacf45673d5b35c || exit 1
 	fi
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
 		cd ${top_dir}/iw
-		make
+		make || exit 1
 	fi
 
 	if [ x"$stage" = "xinstall"  -o x"$stage" = "xall" ]
 	then
 		cd ${top_dir}/iw
-		sudo -E make install
+		sudo -E make install || exit 1
 	fi
 	cd $top_dir
 }
@@ -119,12 +119,12 @@ function libnl ()
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
 		cd ${top_dir}/libnl-2.0
-		make
+		make || exit 1
 	fi
 	if [ x"$stage" = "xinstall" -o x"$stage" = "xall" ]
 	then
 		cd ${top_dir}/libnl-2.0
-		sudo -E make install
+		sudo -E make install || exit 1
 	fi
 	cd $top_dir
 
@@ -139,18 +139,18 @@ function openssl ()
 		cd ${top_dir}/openssl-1.0.0d
 		download http://processors.wiki.ti.com/images/e/ee/Openssl-1.0.0d-new-compilation-target-for-configure.zip Openssl-1.0.0d-new-compilation-target-for-configure.zip
 		unzip Openssl-1.0.0d-new-compilation-target-for-configure.zip
-		patch -p1 -i 0001-openssl-1.0.0d-new-target-os-for-configure.patch
+		patch -p1 -i 0001-openssl-1.0.0d-new-target-os-for-configure.patch || exit 1
 		CROSS_COMPILE= perl ./Configure  shared --prefix=$NFSROOT/usr --openssldir=$NFSROOT/usr/lib/ssl linux-elf-arm
-	fi
+	fi || exit 1
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
 		cd ${top_dir}/openssl-1.0.0d
-		make
+		make || exit 1
 	fi
 	if [ x"$stage" = "xinstall" -o x"$stage" = "xall" ]
 	then
 		cd ${top_dir}/openssl-1.0.0d
-		sudo -E make install
+		sudo -E make install || exit 1
 	fi
 	cd $top_dir
 }
@@ -167,12 +167,12 @@ function ti-utils ()
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
 		cd ${top_dir}/ti-utils
-		make
+		make || exit 1
 	fi
 	if [ x"$stage" = "xinstall" -o x"$stage" = "xall" ]
 	then
 		cd ${top_dir}/ti-utils
-		sudo -E make install
+		sudo -E make install || exit 1
 	fi
 	cd $top_dir
 }
@@ -271,12 +271,12 @@ function hostap()
 		cd ${top_dir}/hostap/hostapd
 		make_hostapd_defconfig
 		make clean
-		make
+		make || exit 1
 	fi
 	if [ x"$stage" = "xinstall" -o x"$stage" = "xall" ]
 	then
 		cd ${top_dir}/hostap/hostapd
-		sudo -E make install
+		sudo -E make install || exit 1
 	fi
 	cd $top_dir
 
@@ -726,12 +726,12 @@ function wpa_supplicant ()
 		cd ${top_dir}/hostap/wpa_supplicant
 		make clean
 		make_wpa_sup_defconfig
-		make 
+		make || exit 1
 	fi
 	if [ x"$stage" = x"install" -o x"$stage" = "xall" ]
 	then
 		cd ${top_dir}/hostap/wpa_supplicant
-		sudo -E make install
+		sudo -E make install || exit 1
 	fi
 	cd $top_dir
 }
@@ -829,8 +829,7 @@ case $package in
 	libnl)
 		case $stage in
 			download )
-				package_dir_exists ${top_dir}/libnl-2.0 libnl-2 || exit 1
-				libnl "download"
+				package_dir_exists ${top_dir}/libnl-2.0 libnl-2 && libnl "download"
 				;;
 			build)
 				package_dir_exists ${top_dir}/libnl-2.0 libnl-2
@@ -863,7 +862,7 @@ case $package in
 				openssl "download"
 				;;
 			build)
-				package_dir_exists ${top_dir}/openssl-1.0.0d openssl
+				package_dir_exists ${top_dir}/openssl-1.0.0d openssl || exit 1
 				if [ ! $? ]
 				then
 					openssl "download"
