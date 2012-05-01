@@ -9,16 +9,20 @@ source setup-env
 ME=$0
 function download ()
 {
+	file="$2"
+	[ -e ${top_dir}/${file} ] && echo "File $file already exists. Skipping download." && return 0
 	wget "$1"
 	if [ $? -ne 0 ]
 	then 
-		echo "Failed to download $2"
+		echo "Failed to download $file"
 		exit 1
 	fi
 }
 
 function git_clone ()
 {
+	file="$2"
+	[ -e ${top_dir}/${file} ] && echo "File $file alread exists. Skipping git clone." && return 0
 	git clone "$1"
 	if [ $? -ne 0 ]
 	then
@@ -134,7 +138,8 @@ function openssl ()
 	stage=$1
 	if [ x"$stage" = x"download" -o x"$stage" = "xall" ]
 	then
-		download http://www.openssl.org/source/openssl-1.0.0d.tar.gz;name=src openssl-1.0.0d.tar.gz
+		cd ${top_dir}
+		download "http://www.openssl.org/source/openssl-1.0.0d.tar.gz" "openssl-1.0.0d.tar.gz"
 		tar xzf openssl-1.0.0d.tar.gz
 		cd ${top_dir}/openssl-1.0.0d
 		download http://processors.wiki.ti.com/images/e/ee/Openssl-1.0.0d-new-compilation-target-for-configure.zip Openssl-1.0.0d-new-compilation-target-for-configure.zip
@@ -850,6 +855,10 @@ case $package in
 					libnl "install"
 				fi
 				;;
+			all)
+				package_dir_exists ${top_dir}/libnl-2.0 libnl-2 || rm -rf libnl-2.0
+				libnl "all"
+				;;
 			*)
 				echo "Error: illegal action for libnl"
 				exit 1
@@ -862,7 +871,7 @@ case $package in
 				openssl "download"
 				;;
 			build)
-				package_dir_exists ${top_dir}/openssl-1.0.0d openssl || exit 1
+				package_dir_exists ${top_dir}/openssl-1.0.0d openssl
 				if [ ! $? ]
 				then
 					openssl "download"
@@ -877,7 +886,9 @@ case $package in
 				openssl "install"
 				;;
 			all)
+				package_dir_exists ${top_dir}/openssl-1.0.0d openssl || rm -rf openssl-1.0.0d
 				openssl "all"
+				;;
 		esac
 		;;
 	iw)
@@ -897,6 +908,11 @@ case $package in
 				[ ! $? ] && iw "donwload"
 				[ ! -x ${top_dir}/iw/iw ] && iw "build"
 				iw "install"
+				;;
+			all)
+
+				package_dir_exists ${top_dir}/iw iw || rm -rf ${top_dir}/iw
+				iw "all"
 				;;
 			*)
 				echo "Error: illegal action for iw"
@@ -928,6 +944,10 @@ case $package in
 					hostap "build"
 				fi
 				hostap "install"
+				;;
+			all)
+				package_dir_exists ${top_dir}/hostap hostapd || rm -rf ${top_dir}/hostap
+				hostap "all"
 				;;
 			*)
 				echo "Error: illegal action for hostapd"
@@ -988,6 +1008,10 @@ case $package in
 					cd ${top_dir}/compat-wireless
 					compat-wireless "install"
 				fi
+				;;
+			all)
+				package_dir_exists ${top_dir}/compat-wireless compat-wireless || rm -rf ${top_dir}/compat-wireless
+				compat-wireless "all"
 				;;
 			*)
 				echo "Error: illegal action for hostapd"
@@ -1066,6 +1090,10 @@ case $package in
 					cd ${top_dir}/crda-1.1.1
 					crda "install"
 				fi
+				;;
+			all)
+				package_dir_exists ${top_dir}/crda-1.1.1 crda || rm -rf ${top_dir}/crda-1.1.1
+				crda "all"
 				;;
 			*)
 				echo "Error: illegal action for crda"
