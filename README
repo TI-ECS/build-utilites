@@ -1,1 +1,46 @@
 This repository holds small usefull utilities to ease such tasks as build of WLAN packages
+
+wl12xx_build.sh: build WLAN components
+======================================
+This script compiles one of following utilities: libnl, openssl, hostapd, wpa_supplicant,wl12xx_modules,firmware,crda,callibrator
+by calling specific utility name and action.
+
+Usage: wl12xx_build.sh target <
+				libnl
+				openssl
+				hostap
+				wpa_supplicant
+				wl12xx_modules
+				firmware
+				crda
+				callibrator >  action <download|build|install>
+			all
+			clean-all
+
+In case the options is 'all' all utilities will be downloaded and installed on root file system.
+Option clean-all uninstalls all components and removes their sources from computer.
+
+File setup-env contains all required environment variables:
+	NFSROOT=<path to target root file system>
+Path where pkg-config utility looks for configuration files (.pc) of libraries
+	PKG_CONFIG_PATH=${NFSROOT}/lib/pkgconfig:${NFSROOT}/usr/lib/pkgconfig
+	PKG_CONFIG_DEBUG_SPEW
+	PKG_CONFIG_LIBDIR=${PKG_CONFIG_PATH}
+Path where SDK is installed
+	SDK=/home/user/sdk
+Path where kernel sources can be found
+	KLIB_BUILD=$SDK/linux-kernel
+Path to root file system where new kernel modules will be installed
+	KLIB=$NFSROOT
+Compiler
+	CC=${CROSS_COMPILE}gcc  
+Linker
+	LD=${CROSS_COMPILE}ldd
+Ranlib utility
+	RANLIB=${CROSS_COMPILE}ranlib
+Archiver for libraries
+	AR=${CROSS_COMPILE}ar
+Work directory for download and build process
+top_dir=`pwd`/wl12xx
+'ls' utility, to ensure no alias is used
+LS=/bin/ls
