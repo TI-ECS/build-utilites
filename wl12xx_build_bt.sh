@@ -257,7 +257,7 @@ function check()
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
 		add_fingerprint 1
 	fi
-	echo "check() built successfully"
+	echo "check built successfully"
 }
 
 function bluez()
@@ -660,7 +660,7 @@ function get_machine_used()
 old_dir=`pwd`
 MACHINE_TYPE=""
 
-source setup-env-bt
+source setup-env || exit 1
 
 # if there are no sufficient arguments...
 if  [ $# -lt 2 ]; then

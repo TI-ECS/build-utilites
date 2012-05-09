@@ -1,15 +1,35 @@
-export NFSROOT=/home/user/targetfs
-export PKG_CONFIG_PATH=${NFSROOT}/lib/pkgconfig:${NFSROOT}/usr/lib/pkgconfig
-export PKG_CONFIG_DEBUG_SPEW
-export PKG_CONFIG_LIBDIR=${PKG_CONFIG_PATH}
-SDK=/home/user/sdk
-export KLIB_BUILD=$SDK/linux-kernel
-export KLIB=$NFSROOT
-export CC=${CROSS_COMPILE}gcc  
-export LD=${CROSS_COMPILE}ldd
-export RANLIB=${CROSS_COMPILE}ranlib
-export AR=${CROSS_COMPILE}ar
-#this is where all needed packages will be donwloaded
-top_dir=`pwd`/wl12xx
+#                            \\\// 
+#                           -(o o)- 
+#========================oOO==(_)==OOo=======================
+#
+# This file contains the exports needed for automating the
+# building process of the Bluetooth components
+#
+
+export ARCH="arm"
+export CROSS_COMPILE="arm-none-linux-gnueabi-"
+export PATH=$PATH:<toolchain path>
+export ROOTFS=<path to root filesystem>
+export WORK_SPACE=<working directory>
+export KLIB_BUILD=<linux-kernel>
+export MY_PREFIX="/usr"
+export MY_SYSCONFDIR="/etc"
+export MY_LOCALSTATEDIR="/var"
+export CC="${CROSS_COMPILE}gcc"
+export CXX="${CROSS_COMPILE}g++"
+export AR="${CROSS_COMPILE}ar"
+export RANLIB="${CROSS_COMPILE}ranlib"
+export CFLAGS="${CFLAGS} -I${ROOTFS}${MY_PREFIX}/include"
+export CPPFLAGS="${CFLAGS} ${CFLAGS}"
+export LDFLAGS="${LDFLAGS} -L${ROOTFS}${MY_PREFIX}/lib"
+export PKG_CONFIG_SYSROOT_DIR=${ROOTFS}
+export PKG_CONFIG_PATH="${ROOTFS}${MY_PREFIX}/lib/pkgconfig:${ROOTFS}/lib/pkgconfig"
+export PKG_CONFIG_LIBDIR=""
+export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=""
+export PKG_CONFIG_ALLOW_SYSTEM_LIBS=""
+
+# MACHINE_TYPE - The target machine type. Can have one of the following values: "am1808" , "omap3evm" , "am335x"
+# This is needed to build bluetooth components.
+export MACHINE_TYPE="am335x"
+
 LS=/bin/ls
-unset PKG_CONFIG_SYSROOT_DIR

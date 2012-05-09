@@ -6,14 +6,13 @@ then
 	exit 1
 fi
 source setup-env
-unset PKG_CONFIG_SYSROOT_DIR
 ME=$0
 components="libnl openssl iw hostap wpa_supplicant crda ti-utils ti-utils-firmware compat-wireless"
 
 function download ()
 {
 	file="$2"
-	[ -e ${top_dir}/${file} ] && echo "File $file already exists. Skipping download." && return 0
+	[ -e ${WORK_SPACE}/${file} ] && echo "File $file already exists. Skipping download." && return 0
 	wget "$1"
 	if [ $? -ne 0 ]
 	then 
@@ -25,7 +24,7 @@ function download ()
 function git_clone ()
 {
 	file="$2"
-	[ -e ${top_dir}/${file} ] && echo "File $file alread exists. Skipping git clone." && return 0
+	[ -e ${WORK_SPACE}/${file} ] && echo "File $file alread exists. Skipping git clone." && return 0
 	git clone "$1"
 	if [ $? -ne 0 ]
 	then
@@ -40,9 +39,9 @@ function compat-wireless()
 	then
 		#download https://gforge.ti.com/gf/download/frsrelease/768/5331/ti-compat-wireless-wl12xx-r4-12-12-20.tar.gz ti-compat-wireless-wl12xx-r4-12-12-20.tar.gz
 		#tar xzf ti-compat-wireless-wl12xx-r4-12-12-20.tar.gz
-		https://gforge.ti.com/gf/download/frsrelease/801/5434/ti-compat-wireless-wl12xx-2012-02-06-r4-12.tgz
+		download https://gforge.ti.com/gf/download/frsrelease/801/5434/ti-compat-wireless-wl12xx-2012-02-06-r4-12.tgz ti-compat-wireless-wl12xx-2012-02-06-r4-12.tgz
 		tar xzf ti-compat-wireless-wl12xx-2012-02-06-r4-12.tgz
-		cd ${top_dir}/compat-wireless
+		cd ${WORK_SPACE}/compat-wireless || exit 1
 		download http://processors.wiki.ti.com/images/a/aa/Compat-wireless-patches.zip Compat-wireless-patches.zip
 		mkdir tmp-patches
 		cd tmp-patches
@@ -52,23 +51,24 @@ function compat-wireless()
 	fi
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
-		cd ${top_dir}/compat-wireless
-		make KLIB_BUILD=${KLIB_BUILD} KLIB=${NFSROOT} || exit 1
+		cd ${WORK_SPACE}/compat-wireless
+		make KLIB_BUILD=${KLIB_BUILD} KLIB=${ROOTFS} || exit 1
 	fi
 	if [ x"$stage" = "xinstall"  -o x"$stage" = "xall" ]
 	then
-		cd ${top_dir}/compat-wireless
-		sudo -E make KLIB=${NFSROOT} install || exit 1
+		cd ${WORK_SPACE}/compat-wireless
+		make KLIB=${ROOTFS} install || exit 1
+		make V=1 KLIB_BUILD=${KLIB_BUILD} KLIB=${ROOTFS} install-modules
 	fi
 
 	if [ x"$stage" = "xclean" ]
 	then
-		cd $top_dir/compat-wireless
-		make KLIB=${NFSROOT} uninstall
-		cd $top_dir && rm -rf compat-wireless ti-compat-wireless-wl12xx-r4-12-12-20.tar.gz
+		cd $WORK_SPACE/compat-wireless
+		make KLIB=${ROOTFS} uninstall
+		cd $WORK_SPACE && rm -rf compat-wireless
 	fi
 
-	cd $top_dir
+	cd $WORK_SPACE
 }
 function crda ()
 {
@@ -77,28 +77,28 @@ function crda ()
 	then
 		download "http://wireless.kernel.org/download/crda/crda-1.1.1.tar.bz2" "crda-1.1.1.tar.bz2"
 		tar xjf crda-1.1.1.tar.bz2
-		cd ${top_dir}/crda-1.1.1
+		cd ${WORK_SPACE}/crda-1.1.1
 		download http://linuxwireless.org/download/wireless-regdb/regulatory.bins/2011.04.28-regulatory.bin 2011.04.28-regulatory.bin
 	fi
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
-		cd ${top_dir}/crda-1.1.1
+		cd ${WORK_SPACE}/crda-1.1.1
 		make USE_OPENSSL=1 all_noverify || exit 1
 	fi
 	if [ x"$stage" = "xinstall"  -o x"$stage" = "xall" ]
 	then
-		cd ${top_dir}/crda-1.1.1
-		sudo -E DESTDIR=${NFSROOT} make USE_OPENSSL=1 install || exit 1
-		sudo mkdir -p ${NFSROOT}/usr/lib/crda
-		sudo -E cp 2011.04.28-regulatory.bin ${NFSROOT}/usr/lib/crda/regulatory.bin
+		cd ${WORK_SPACE}/crda-1.1.1
+		DESTDIR=${ROOTFS} make USE_OPENSSL=1 install || exit 1
+		sudo mkdir -p ${ROOTFS}/usr/lib/crda
+		cp 2011.04.28-regulatory.bin ${ROOTFS}/usr/lib/crda/regulatory.bin
 	fi
 	if [ x"$stage" = "xclean" ]
 	then
-		cd $top_dir/crda-1.1.1
-		sudo -E make uninstall
-		cd $top_dir && rm -rf crda-1.1.1 crda-1.1.1.tar.bz2
+		cd $WORK_SPACE/crda-1.1.1
+		DESTDIR=${ROOTFS} make clean
+		cd $WORK_SPACE && rm -rf crda-1.1.1
 	fi
-	cd $top_dir
+	cd $WORK_SPACE
 }
 
 function iw ()
@@ -107,27 +107,27 @@ function iw ()
 	if [ x"$stage" = "xdownload"  -o x"$stage" = "xall" ]
 	then
 		git_clone git://git.sipsolutions.net/iw.git iw
-		cd ${top_dir}/iw
+		cd ${WORK_SPACE}/iw
 		git reset --hard 0a236ef5f8e4ba7218aac7d0cdacf45673d5b35c || exit 1
 	fi
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
-		cd ${top_dir}/iw
+		cd ${WORK_SPACE}/iw
 		make || exit 1
 	fi
 
 	if [ x"$stage" = "xinstall"  -o x"$stage" = "xall" ]
 	then
-		cd ${top_dir}/iw
-		sudo -E make install || exit 1
+		cd ${WORK_SPACE}/iw
+		DESTDIR=${ROOTFS} make install || exit 1
 	fi
 	if [ x"$stage" = "xclean" ]
 	then
-		cd $top_dir/iw
-		sudo -E make uninstall
-		cd $top_dir && rm -rf iw
+		cd $WORK_SPACE/iw
+		make clean
+		cd $WORK_SPAC
 	fi
-	cd $top_dir
+	cd $WORK_SPACE
 }
 function libnl ()
 {
@@ -136,8 +136,8 @@ function libnl ()
 	then
 		download http://www.infradead.org/~tgr/libnl/files/libnl-2.0.tar.gz libnl-2.0.tar.gz
 		tar xzf libnl-2.0.tar.gz
-		cd ${top_dir}/libnl-2.0
-		./configure --prefix=${NFSROOT} CC=${CROSS_COMPILE}gcc LD=${CROSS_COMPILE}ld RANLIB=${CROSS_COMPILE}ranlib --host=arm-linux
+		cd ${WORK_SPACE}/libnl-2.0
+		./configure --prefix=${ROOTFS} CC=${CROSS_COMPILE}gcc LD=${CROSS_COMPILE}ld RANLIB=${CROSS_COMPILE}ranlib --host=arm-linux
 		if [ $? != 0 ]
 		then
 			echo "libnl failed to be configured"
@@ -147,21 +147,21 @@ function libnl ()
 
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
-		cd ${top_dir}/libnl-2.0
+		cd ${WORK_SPACE}/libnl-2.0
 		make || exit 1
 	fi
 	if [ x"$stage" = "xinstall" -o x"$stage" = "xall" ]
 	then
-		cd ${top_dir}/libnl-2.0
-		sudo -E make install || exit 1
+		cd ${WORK_SPACE}/libnl-2.0
+		make install || exit 1
 	fi
 	if [ x"$stage" = "xclean" ]
 	then
-		cd $top_dir/libnl-2.0
-		sudo -E make uninstall
-		cd $top_dir && rm -rf libnl-2.0 libnl-2.0.tar.gz
+		cd $WORK_SPACE/libnl-2.0
+		make uninstall
+		cd $WORK_SPACE
 	fi
-	cd $top_dir
+	cd $WORK_SPACE
 
 }
 function openssl ()
@@ -169,32 +169,32 @@ function openssl ()
 	stage=$1
 	if [ x"$stage" = x"download" -o x"$stage" = "xall" ]
 	then
-		cd ${top_dir}
+		cd ${WORK_SPACE}
 		download "http://www.openssl.org/source/openssl-1.0.0d.tar.gz" "openssl-1.0.0d.tar.gz"
 		tar xzf openssl-1.0.0d.tar.gz
-		cd ${top_dir}/openssl-1.0.0d
 		download http://processors.wiki.ti.com/images/e/ee/Openssl-1.0.0d-new-compilation-target-for-configure.zip Openssl-1.0.0d-new-compilation-target-for-configure.zip
-		unzip Openssl-1.0.0d-new-compilation-target-for-configure.zip
+		cd ${WORK_SPACE}/openssl-1.0.0d
+		unzip ${WORK_SPACE}/Openssl-1.0.0d-new-compilation-target-for-configure.zip || exit 1
 		patch -p1 -i 0001-openssl-1.0.0d-new-target-os-for-configure.patch || exit 1
-		CROSS_COMPILE= perl ./Configure  shared --prefix=$NFSROOT/usr --openssldir=$NFSROOT/usr/lib/ssl linux-elf-arm
+		CROSS_COMPILE= perl ./Configure  shared --prefix=$ROOTFS/usr --openssldir=$ROOTFS/usr/lib/ssl linux-elf-arm
 	fi || exit 1
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
-		cd ${top_dir}/openssl-1.0.0d
+		cd ${WORK_SPACE}/openssl-1.0.0d
 		make || exit 1
 	fi
 	if [ x"$stage" = "xinstall" -o x"$stage" = "xall" ]
 	then
-		cd ${top_dir}/openssl-1.0.0d
-		sudo -E make install || exit 1
+		cd ${WORK_SPACE}/openssl-1.0.0d
+		make install_sw || exit 1
 	fi
 	if [ x"$stage" = "xclean" ]
 	then
-		cd ${top_dir}/openssl-1.0.0d
-		sudo -E make uninstall
-		cd $top_dir && rm -rf openssl-1.0.0d openssl-1.0.0d.tar.gz
+		cd ${WORK_SPACE}/openssl-1.0.0d
+		rm -f ${ROOTFS}/usr/lib/*ssl* ${ROOTFS}/usr/lib/pkgconfig/*ssl*
+		cd $WORK_SPACE && rm -rf openssl-1.0.0d
 	fi
-	cd $top_dir
+	cd $WORK_SPACE
 }
 function ti-utils ()
 {
@@ -202,27 +202,28 @@ function ti-utils ()
 	if [ x"$stage" = x"download" -o x"$stage" = "xall" ]
 	then
 		git_clone git://github.com/TI-ECS/ti-utils.git ti-utils
-		cd ${top_dir}/ti-utils
+		cd ${WORK_SPACE}/ti-utils
 		git reset --hard aaffc13e6c804291ac7dcefdcec181c0207ff67a
 	fi
 
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
-		cd ${top_dir}/ti-utils
-		make || exit 1
+		cd ${WORK_SPACE}/ti-utils
+		NFSROOT=${ROOTFS} make || exit 1
 	fi
 	if [ x"$stage" = "xinstall" -o x"$stage" = "xall" ]
 	then
-		cd ${top_dir}/ti-utils
-		sudo -E make install || exit 1
+		cd ${WORK_SPACE}/ti-utils
+		NFSROOT=${ROOTFS} make install || exit 1
 	fi
 	if [ x"$stage" = "xclean" ]
 	then
-		cd ${top_dir}/ti-utils
-		sudo -E make uninstall
-		cd $top_dir && rm -rf ti-utils
+		cd ${WORK_SPACE}/ti-utils
+		NFSROOT=${ROOTFS} make clean
+		rm ${ROOTFS}/home/root/calibrator ${ROOTFS}/home/root/wl12xx-tool.sh
+		cd $WORK_SPACE
 	fi
-	cd $top_dir
+	cd $WORK_SPACE
 }
 function ti-utils-firmware()
 {
@@ -230,24 +231,22 @@ function ti-utils-firmware()
 	 
 	if [ x"$stage" = "xinstall" -o x"$stage" = "xall" ]
 	then
-		sudo -E mkdir -p $NFSROOT/lib/firmware/ti-connectivity
-		sudo cp ${top_dir}/ti-utils/firmware/* $NFSROOT/lib/firmware/ti-connectivity
-		sudo rm -f $NFSROOT/lib/firmware/ti-connectivity/Makefile
-		sudo cp -r ${top_dir}/ti-utils/ini_files $NFSROOT/lib/firmware/ti-connectivity
+		mkdir -p $ROOTFS/lib/firmware/ti-connectivity
+		sudo cp ${WORK_SPACE}/ti-utils/firmware/* $ROOTFS/lib/firmware/ti-connectivity
+		sudo rm -f $ROOTFS/lib/firmware/ti-connectivity/Makefile
+		sudo cp -r ${WORK_SPACE}/ti-utils/ini_files $ROOTFS/lib/firmware/ti-connectivity
 	fi
 	if [ x"$stage" = "xclean" ]
 	then
-		if [ -d ${top_dir}/ti-utils ]
-		then
-			cd ${top_dir}/ti-utils
-			sudo -E make uninstall
-			cd $top_dir && rm -rf ti-utils
-		fi
+		rm -f $ROOTFS/lib/firmware/ti-connectivity
+		rm -rf $ROOTFS/lib/firmware/ti-connectivity
+		cd $WORK_SPACE
 	fi
 }
 
 function hostap_patching ()
 {
+	[ -e ${WORK_SPACE}/hostap/patches.83fa07226deb/patches.83fa07226deb.done ] && return
 	download  "http://processors.wiki.ti.com/images/8/8a/Hostapd-wpa-supplicant-patches.zip" Hostapd-wpa-supplicant-patches.zip
 	mkdir patches.83fa07226deb
 	cd patches.83fa07226deb && unzip ../Hostapd-wpa-supplicant-patches.zip && cd -
@@ -274,14 +273,14 @@ function make_hostapd_defconfig ()
 # This file is included in Makefile, so variables like CFLAGS and LIBS can also
 # be modified from here. In most cass, these lines should use += in order not
 # to override previous values of the variables.
-DESTDIR=$(NFSROOT)
+DESTDIR=$(ROOTFS)
 #CC=$(CROSS_COMPILE)gcc
-#CFLAGS += -I$(NFSROOT)/include -DCONFIG_LIBNL20
+#CFLAGS += -I$(ROOTFS)/include -DCONFIG_LIBNL20
 #CPPFLAGS += -DCONFIG_LIBNL20
-#LIBS += -L$(NFSROOT)/lib -lnl-genl
-#LIBS_p += -L$(NFSROOT)/lib
-#LIBDIR = $(NFSROOT)/lib
-#BINDIR = $(NFSROOT)/usr/sbin
+#LIBS += -L$(ROOTFS)/lib -lnl-genl
+#LIBS_p += -L$(ROOTFS)/lib
+#LIBDIR = $(ROOTFS)/lib
+#BINDIR = $(ROOTFS)/usr/sbin
 # Driver interface for Host AP driver
 CONFIG_DRIVER_HOSTAP=y
 # Driver interface for drivers using the nl80211 kernel interface
@@ -290,10 +289,10 @@ CONFIG_LIBNL20=y
 # driver_nl80211.c requires a rather new libnl (version 1.1) which may not be
 # shipped with your distribution yet. If that is the case, you need to build
 # newer libnl version and point the hostapd build to use it.
-LIBNL=$(NFSROOT)
-CFLAGS += -I$(LIBNL)/include -I$(NFSROOT)/usr/include/
-LIBS += -L$(LIBNL)/lib -L$(LIBNL)/lib  -L$(NFSROOT)/usr/lib -lssl -lcrypto -ldl
-LIBS_p += -L$(LIBNL)/lib -L$(LIBNL)/lib  -L$(NFSROOT)/usr/lib -lssl -lcrypto -ldl
+LIBNL=$(ROOTFS)
+CFLAGS += -I$(LIBNL)/include -I$(ROOTFS)/usr/include/
+LIBS += -L$(LIBNL)/lib -L$(LIBNL)/lib  -L$(ROOTFS)/usr/lib -lssl -lcrypto -ldl
+LIBS_p += -L$(LIBNL)/lib -L$(LIBNL)/lib  -L$(ROOTFS)/usr/lib -lssl -lcrypto -ldl
 hostapd_defconfig
 }
 
@@ -303,41 +302,41 @@ function hostap()
 	if [ x"$stage" = x"download" -o x"$stage" = "xall" ]
 	then
 		git_clone git://w1.fi/srv/git/hostap.git hostap
-		cd ${top_dir}/hostap
+		cd ${WORK_SPACE}/hostap
 		git reset --hard 83fa07226debc2f7082b6ccd62dbb1cd47c30472
 		hostap_patching
 	fi
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
-		cd ${top_dir}/hostap/hostapd
+		cd ${WORK_SPACE}/hostap/hostapd
 		make_hostapd_defconfig
 		make clean
 		make || exit 1
 	fi
 	if [ x"$stage" = "xinstall" -o x"$stage" = "xall" ]
 	then
-		cd ${top_dir}/hostap/hostapd
-		sudo -E make install || exit 1
+		cd ${WORK_SPACE}/hostap/hostapd
+		make install || exit 1
 	fi
 	if [ x"$stage" = "xclean" ]
 	then
-		cd ${top_dir}/hostap/hostapd
-		sudo -E make uninstall
+		cd ${WORK_SPACE}/hostap/hostapd
+		make clean
 		cd ../wpa_supplicant
-		sudo -E make uninstall
-		cd $top_dir && rm -rf hostap
+		make clean
+		cd $WORK_SPACE
 	fi
-	cd $top_dir
+	cd $WORK_SPACE
 
 }
 function make_wpa_sup_defconfig ()
 {
 	cat > .config <<"wpa_sup_defconfig"
 # Example wpa_supplicant build time configuration
-DESTDIR=$(NFSROOT)
-CFLAGS += -I$(NFSROOT)/usr/include/
-LIBS += -L$(NFSROOT)/usr/lib
-LIBS_p += -L$(NFSROOT)/usr/lib
+DESTDIR=$(ROOTFS)
+CFLAGS += -I$(ROOTFS)/usr/include/
+LIBS += -L$(ROOTFS)/usr/lib
+LIBS_p += -L$(ROOTFS)/usr/lib
 CONFIG_WAPI=y
 CONFIG_LIBNL20=y
 NEED_BGSCAN=y
@@ -395,7 +394,7 @@ CONFIG_BACKEND=file
 CONFIG_PEERKEY=y
 # Add support for writing debug log to a file (/tmp/wpa_supplicant-log-#.txt)
 CONFIG_DEBUG_FILE=y
-LIBNL=$(NFSROOT)
+LIBNL=$(ROOTFS)
 CFLAGS += -I$(LIBNL)/include
 LIBS += -L$(LIBNL)/lib  -lssl -lcrypto -ldl
 LIBS_p += -L$(LIBNL)/lib  -lssl -lcrypto -ldl
@@ -409,17 +408,17 @@ function wpa_supplicant ()
 	stage=$1
 	if [ x"$stage" = x"build" -o x"$stage" = "xall" ]
 	then
-		cd ${top_dir}/hostap/wpa_supplicant
+		cd ${WORK_SPACE}/hostap/wpa_supplicant
 		make clean
 		make_wpa_sup_defconfig
 		make || exit 1
 	fi
 	if [ x"$stage" = x"install" -o x"$stage" = "xall" ]
 	then
-		cd ${top_dir}/hostap/wpa_supplicant
-		sudo -E make install || exit 1
+		cd ${WORK_SPACE}/hostap/wpa_supplicant
+		make install || exit 1
 	fi
-	cd $top_dir
+	cd $WORK_SPACE
 }
 
 function usage ()
@@ -428,7 +427,7 @@ function usage ()
 	echo "by calling specific utility name and action."
 	echo "In case the options is 'all' all utilities will be downloaded and installed on root file system."
 	echo "File setup-env contains all required environment variables, for example:"
-	echo "	NFSROOT=<path to target root file system>."
+	echo "	ROOTFS=<path to target root file system>."
 	echo "Part of operations requires root access."
 	echo "Usage: `basename $ME` target <libnl"
 	echo "                              openssl"
@@ -463,8 +462,25 @@ function package_dir_exists()
 	fi
 	return 0
 }
+function check_env()
+{
+	which dpkg 2>&1>/dev/null || return 0
+	err=0
+	ret=0
+	packages="python python-m2crypto bash bison perl bc corkscrew git-core git-email git-gui git-svn gitk"
+	for p in ${packages}
+	do
+		echo -n "Checking ${p}..."
+		present=`dpkg --get-selections ${p} 2>/dev/null | awk '{print $1}'`
+		[ x"${present}" != x"${p}" ] && echo "Package ${p} is not found. Please run 'apt-get install ${p}' to install it." && err=1 && ret=1
+		[ ${err} -ne 1 ] && echo "OK"
+		err=0
+	done
+	return ${ret}
+}
 ############################# MAIN ##############################################
 # First building environment should be checked
+check_env || exit 1
 if [ -z $CROSS_COMPILE ]
 then
 	#lets find some
@@ -483,7 +499,7 @@ then
 	exit 1
 fi
 
-if [ -z $NFSROOT ]
+if [ -z $ROOTFS ]
 then
 	echo "No path to root file system"
 	exit 1
@@ -509,39 +525,39 @@ then
 	package=$1
 	stage=$2
 fi
-if [ ! -d $top_dir ]
+if [ ! -d $WORK_SPACE ]
 then
-	mkdir -p $top_dir
+	mkdir -p $WORK_SPACE
 fi
-cd $top_dir
+cd $WORK_SPACE
 
 case $package in
 	libnl)
 		case $stage in
 			download )
-				package_dir_exists ${top_dir}/libnl-2.0 libnl-2 && libnl "download"
+				package_dir_exists ${WORK_SPACE}/libnl-2.0 libnl-2 && libnl "download"
 				;;
 			build)
-				package_dir_exists ${top_dir}/libnl-2.0 libnl-2
+				package_dir_exists ${WORK_SPACE}/libnl-2.0 libnl-2
 				if [ ! $? ]
 				then
 					libnl "download"
 				fi
-				cd ${top_dir}/libnl-2.0
+				cd ${WORK_SPACE}/libnl-2.0
 				libnl "build"
 				;;
 			install)
-				package_dir_exists ${top_dir}/libnl-2.0 libnl-2
+				package_dir_exists ${WORK_SPACE}/libnl-2.0 libnl-2
 				if [ ! $? ]
 				then
 					libnl "all" && exit
 				else
-					cd ${top_dir}/libnl-2.0
+					cd ${WORK_SPACE}/libnl-2.0
 					libnl "install"
 				fi
 				;;
 			all)
-				package_dir_exists ${top_dir}/libnl-2.0 libnl-2 || rm -rf libnl-2.0
+				package_dir_exists ${WORK_SPACE}/libnl-2.0 libnl-2 || rm -rf libnl-2.0
 				libnl "all"
 				;;
 			*)
@@ -552,26 +568,26 @@ case $package in
 	openssl)
 		case $stage in
 			download )
-				package_dir_exists ${top_dir}/openssl-1.0.0d openssl || exit 1
+				package_dir_exists ${WORK_SPACE}/openssl-1.0.0d openssl || exit 1
 				openssl "download"
 				;;
 			build)
-				package_dir_exists ${top_dir}/openssl-1.0.0d openssl
+				package_dir_exists ${WORK_SPACE}/openssl-1.0.0d openssl
 				if [ ! $? ]
 				then
 					openssl "download"
 				fi
-				cd ${top_dir}/openssl-1.0.0d
+				cd ${WORK_SPACE}/openssl-1.0.0d
 				openssl "build"
 				;;
 			install)
-				package_dir_exists ${top_dir}/openssl-1.0.0d openssl
+				package_dir_exists ${WORK_SPACE}/openssl-1.0.0d openssl
 				test [ ! $? ] && openssl "all" && exit 0
-				cd ${top_dir}/openssl-1.0.0d
+				cd ${WORK_SPACE}/openssl-1.0.0d
 				openssl "install"
 				;;
 			all)
-				package_dir_exists ${top_dir}/openssl-1.0.0d openssl || rm -rf openssl-1.0.0d
+				package_dir_exists ${WORK_SPACE}/openssl-1.0.0d openssl || rm -rf openssl-1.0.0d
 				openssl "all"
 				;;
 		esac
@@ -579,24 +595,24 @@ case $package in
 	iw)
 		case $stage in
 			download )
-				package_dir_exists ${top_dir}/iw iw || exit 1
+				package_dir_exists ${WORK_SPACE}/iw iw || exit 1
 				iw "download"
 				;;
 			build)
-				package_dir_exists ${top_dir}/iw iw
+				package_dir_exists ${WORK_SPACE}/iw iw
 				[ ! $? ] && iw "download"
 				check_libs iw
 				iw "build"
 				;;
 			install)
-				package_dir_exists ${top_dir}/iw iw
+				package_dir_exists ${WORK_SPACE}/iw iw
 				[ ! $? ] && iw "donwload"
-				[ ! -x ${top_dir}/iw/iw ] && iw "build"
+				[ ! -x ${WORK_SPACE}/iw/iw ] && iw "build"
 				iw "install"
 				;;
 			all)
 
-				package_dir_exists ${top_dir}/iw iw || rm -rf ${top_dir}/iw
+				package_dir_exists ${WORK_SPACE}/iw iw || rm -rf ${WORK_SPACE}/iw
 				iw "all"
 				;;
 			*)
@@ -608,30 +624,30 @@ case $package in
 	hostapd)
 		case $stage in
 			download)
-				package_dir_exists ${top_dir}/hostap hostapd || exit 1
+				package_dir_exists ${WORK_SPACE}/hostap hostapd || exit 1
 				hostap "download"
 				;;
 			build)
-				if [ ! -d ${top_dir}/hostap ]
+				if [ ! -d ${WORK_SPACE}/hostap ]
 				then
 					hostap "download"
 				fi
-				cd ${top_dir}/hostap
+				cd ${WORK_SPACE}/hostap
 				hostap "build"
 				;;
 			install)
-				if [ ! -d ${top_dir}/hostap ]
+				if [ ! -d ${WORK_SPACE}/hostap ]
 				then
 					hostap "download"
 				fi
-				if [ ! -e ${top_dir}/hostap/hostapd/hostapd ]
+				if [ ! -e ${WORK_SPACE}/hostap/hostapd/hostapd ]
 				then
 					hostap "build"
 				fi
 				hostap "install"
 				;;
 			all)
-				package_dir_exists ${top_dir}/hostap hostapd || rm -rf ${top_dir}/hostap
+				package_dir_exists ${WORK_SPACE}/hostap hostapd || rm -rf ${WORK_SPACE}/hostap
 				hostap "all"
 				;;
 			*)
@@ -644,22 +660,22 @@ case $package in
 	wpa_supplicant)
 		case $stage in
 			download)
-				package_dir_exists ${top_dir}/hostap wpa_supplicant || exit 1
+				package_dir_exists ${WORK_SPACE}/hostap wpa_supplicant || exit 1
 				hostap "download"
 				;;
 			build)
-				if [ ! -e ${top_dir}/hostap ]
+				if [ ! -e ${WORK_SPACE}/hostap ]
 				then
 					hostap "download"
 				fi
 				wpa_supplicant "build"
 				;;
 			install)
-				if [ ! -e ${top_dir}/hostap ]
+				if [ ! -e ${WORK_SPACE}/hostap ]
 				then
 					hostap "download"
 				fi
-				if [ ! -e ${top_dir}/hostap/wpa_supplicant/wpa_supplicant ]
+				if [ ! -e ${WORK_SPACE}/hostap/wpa_supplicant/wpa_supplicant ]
 				then
 					wpa_supplicant "build"
 				fi
@@ -674,28 +690,28 @@ case $package in
 	wl12xx_modules)
 		case $stage in
 			download)
-				package_dir_exists ${top_dir}/compat-wireless compat-wireless || exit 1
+				package_dir_exists ${WORK_SPACE}/compat-wireless compat-wireless || exit 1
 				compat-wireless "download"
 				;;
 			build)
-				if [ ! -d ${top_dir}/compat-wireless ]
+				if [ ! -d ${WORK_SPACE}/compat-wireless ]
 				then
 					compat-wireless "download"
 				fi
-				cd ${top_dir}/compat-wireless
+				cd ${WORK_SPACE}/compat-wireless
 				compat-wireless "build"
 				;;
 			install)
-				if [ ! -d ${top_dir}/compat-wireless ]
+				if [ ! -d ${WORK_SPACE}/compat-wireless ]
 				then
 					compat-wireless "all"
 				else
-					cd ${top_dir}/compat-wireless
+					cd ${WORK_SPACE}/compat-wireless
 					compat-wireless "install"
 				fi
 				;;
 			all)
-				package_dir_exists ${top_dir}/compat-wireless compat-wireless || rm -rf ${top_dir}/compat-wireless
+				package_dir_exists ${WORK_SPACE}/compat-wireless compat-wireless || rm -rf ${WORK_SPACE}/compat-wireless
 				compat-wireless "all"
 				;;
 			*)
@@ -708,27 +724,27 @@ case $package in
 	calibrator)
 		case $stage in
 			download)
-				if [ -d ${top_dir}/ti-utils ]
+				if [ -d ${WORK_SPACE}/ti-utils ]
 				then
-					echo "Calibrator is part of ti-utils package that already exists at: ${top_dir}/ti-utils"
+					echo "Calibrator is part of ti-utils package that already exists at: ${WORK_SPACE}/ti-utils"
 					exit 0
 				fi
 				ti-utils "download"
 				;;
 			build)
-				if [ ! -d ${top_dir}/ti-utils ]
+				if [ ! -d ${WORK_SPACE}/ti-utils ]
 				then
 					ti-utils "download"
 				fi
-				cd ${top_dir}/ti-utils
+				cd ${WORK_SPACE}/ti-utils
 				ti-utils "build"
 				;;
 			install)
-				if [ ! -d ${top_dir}/ti-utils ]
+				if [ ! -d ${WORK_SPACE}/ti-utils ]
 				then
 					ti-utils "all"
 				else
-					if [ ! -e ${top_dir}/ti-utils/calibrator ]
+					if [ ! -e ${WORK_SPACE}/ti-utils/calibrator ]
 					then
 						ti-utils "build"
 					fi
@@ -756,28 +772,28 @@ case $package in
 	crda)
 		case $stage in
 			download)
-				package_dir_exists ${top_dir}/crda-1.1.1 crda || exit 1
+				package_dir_exists ${WORK_SPACE}/crda-1.1.1 crda || exit 1
 				crda "download"
 				;;
 			build)
-				if [ ! -d ${top_dir}/crda-1.1.1 ]
+				if [ ! -d ${WORK_SPACE}/crda-1.1.1 ]
 				then
 					crda "download"
 				fi
-				cd ${top_dir}/crda-1.1.1
+				cd ${WORK_SPACE}/crda-1.1.1
 				crda "build"
 				;;
 			install)
-				if [ ! -d ${top_dir}/crda-1.1.1 ]
+				if [ ! -d ${WORK_SPACE}/crda-1.1.1 ]
 				then
 					crda "all"
 				else
-					cd ${top_dir}/crda-1.1.1
+					cd ${WORK_SPACE}/crda-1.1.1
 					crda "install"
 				fi
 				;;
 			all)
-				package_dir_exists ${top_dir}/crda-1.1.1 crda || rm -rf ${top_dir}/crda-1.1.1
+				package_dir_exists ${WORK_SPACE}/crda-1.1.1 crda || rm -rf ${WORK_SPACE}/crda-1.1.1
 				crda "all"
 				;;
 			*)
@@ -798,10 +814,13 @@ case $package in
 		compat-wireless "all"
 		;;
 	clean-all)
-		for p in $components
-		do
-			$p clean
-		done
+		compat-wireless "clean"
+		ti-utils "clean"
+		crda "clean"
+		hostap "clean"
+		iw "clean"
+		openssl "clean"
+		libnl "clean"
 		;;
 	*)
 		usage
