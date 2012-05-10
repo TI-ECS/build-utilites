@@ -3,15 +3,26 @@
 #========================oOO==(_)==OOo=======================
 #
 # This file contains the exports needed for automating the
-# building process of the Bluetooth components
+# build process of WLAN/Bluetooth components.
+# Place this file in the same directory with wl12xx_build.sh/wl12xx_build_bt.sh
+# build scripts. No need to run 'source setup-env', the build
+# scripts will perfom it internaly. 
 #
-
-export ARCH="arm"
+#===========================================================
+# User specific environment settings
 export CROSS_COMPILE="arm-none-linux-gnueabi-"
 export PATH="$PATH:<toolchain path>"
 export ROOTFS=<path to root filesystem>
 export WORK_SPACE=<working directory>
 export KLIB_BUILD=<linux-kernel>
+# MACHINE_TYPE - The target machine type. Can have one of the following values: "am1808" , "omap3evm" , "am335x"
+# This is needed to build bluetooth components.
+# This parameter is not relevant for ti814x board.
+export MACHINE_TYPE="am335x"
+
+
+#===========================================================
+export ARCH="arm"
 export MY_PREFIX="/usr"
 export MY_SYSCONFDIR="/etc"
 export MY_LOCALSTATEDIR="/var"
@@ -27,9 +38,4 @@ export PKG_CONFIG_PATH="${ROOTFS}${MY_PREFIX}/lib/pkgconfig:${ROOTFS}/lib/pkgcon
 export PKG_CONFIG_LIBDIR=""
 export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=""
 export PKG_CONFIG_ALLOW_SYSTEM_LIBS=""
-
-# MACHINE_TYPE - The target machine type. Can have one of the following values: "am1808" , "omap3evm" , "am335x"
-# This is needed to build bluetooth components.
-export MACHINE_TYPE="am335x"
-
 LS=/bin/ls
