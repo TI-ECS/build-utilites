@@ -21,17 +21,24 @@ In case the options is 'all' all utilities will be downloaded and installed on r
 Option clean-all uninstalls all components and removes their sources from computer.
 
 File setup-env contains all required environment variables:
-	NFSROOT=<path to target root file system>
+	ROOTFS=<path to target root file system>
+Cross compiler to be used to compile all components:
+	CROSS_COMPILER=arm-none-linux-gnueabi-
+Path to tool chain used to compile sources:
+	PATH=$PATH:<toolchain path>
+Path where kernel sources can be found
+	KLIB_BUILD=< path to kernel build>
+Working directory where all necessary sources will be downloaded and compiled
+	WORK_SPACE=<path>
+Type of target board, used during build of bluetooth, currently supported: "am1808", "omap3evm", "am335x"
+	MACHINE_TYPE=
 Path where pkg-config utility looks for configuration files (.pc) of libraries
-	PKG_CONFIG_PATH=${NFSROOT}/lib/pkgconfig:${NFSROOT}/usr/lib/pkgconfig
+	PKG_CONFIG_PATH=${ROOTFS}/lib/pkgconfig:${ROOTFS}/usr/lib/pkgconfig
 	PKG_CONFIG_DEBUG_SPEW
 	PKG_CONFIG_LIBDIR=${PKG_CONFIG_PATH}
-Path where SDK is installed
-	SDK=/home/user/sdk
-Path where kernel sources can be found
-	KLIB_BUILD=$SDK/linux-kernel
+
 Path to root file system where new kernel modules will be installed
-	KLIB=$NFSROOT
+	KLIB=$ROOTFS
 Compiler
 	CC=${CROSS_COMPILE}gcc  
 Linker
@@ -40,7 +47,5 @@ Ranlib utility
 	RANLIB=${CROSS_COMPILE}ranlib
 Archiver for libraries
 	AR=${CROSS_COMPILE}ar
-Work directory for download and build process
-top_dir=`pwd`/wl12xx
 'ls' utility, to ensure no alias is used
 LS=/bin/ls
