@@ -8,7 +8,7 @@
 
 export ARCH="arm"
 export CROSS_COMPILE="arm-none-linux-gnueabi-"
-export PATH=$PATH:<toolchain path>
+export PATH="$PATH:<toolchain path>"
 export ROOTFS=<path to root filesystem>
 export WORK_SPACE=<working directory>
 export KLIB_BUILD=<linux-kernel>
@@ -20,7 +20,7 @@ export CXX="${CROSS_COMPILE}g++"
 export AR="${CROSS_COMPILE}ar"
 export RANLIB="${CROSS_COMPILE}ranlib"
 export CFLAGS="${CFLAGS} -I${ROOTFS}${MY_PREFIX}/include"
-export CPPFLAGS="${CFLAGS} ${CFLAGS}"
+export CPPFLAGS="${CFLAGS}"
 export LDFLAGS="${LDFLAGS} -L${ROOTFS}${MY_PREFIX}/lib"
 export PKG_CONFIG_SYSROOT_DIR=${ROOTFS}
 export PKG_CONFIG_PATH="${ROOTFS}${MY_PREFIX}/lib/pkgconfig:${ROOTFS}/lib/pkgconfig"
