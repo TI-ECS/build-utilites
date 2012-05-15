@@ -57,8 +57,7 @@ function compat-wireless()
 	if [ x"$stage" = "xinstall"  -o x"$stage" = "xall" ]
 	then
 		cd ${WORK_SPACE}/compat-wireless
-		make KLIB=${ROOTFS} install || exit 1
-		make V=1 KLIB_BUILD=${KLIB_BUILD} KLIB=${ROOTFS} install-modules
+		make KLIB_BUILD=${KLIB_BUILD} KLIB=${ROOTFS} install-modules
 	fi
 
 	if [ x"$stage" = "xclean" ]
@@ -88,8 +87,8 @@ function crda ()
 	if [ x"$stage" = "xinstall"  -o x"$stage" = "xall" ]
 	then
 		cd ${WORK_SPACE}/crda-1.1.1
-		DESTDIR=${ROOTFS} make USE_OPENSSL=1 install || exit 1
-		sudo mkdir -p ${ROOTFS}/usr/lib/crda
+		DESTDIR=${ROOTFS} make USE_OPENSSL=1 UDEV_RULE_DIR="etc/udev/rules.d/" install || exit 1
+		mkdir -p ${ROOTFS}/usr/lib/crda
 		cp 2011.04.28-regulatory.bin ${ROOTFS}/usr/lib/crda/regulatory.bin
 	fi
 	if [ x"$stage" = "xclean" ]
@@ -232,9 +231,9 @@ function ti-utils-firmware()
 	if [ x"$stage" = "xinstall" -o x"$stage" = "xall" ]
 	then
 		mkdir -p $ROOTFS/lib/firmware/ti-connectivity
-		sudo cp ${WORK_SPACE}/ti-utils/firmware/* $ROOTFS/lib/firmware/ti-connectivity
-		sudo rm -f $ROOTFS/lib/firmware/ti-connectivity/Makefile
-		sudo cp -r ${WORK_SPACE}/ti-utils/ini_files $ROOTFS/lib/firmware/ti-connectivity
+		cp ${WORK_SPACE}/ti-utils/firmware/* $ROOTFS/lib/firmware/ti-connectivity
+		rm -f $ROOTFS/lib/firmware/ti-connectivity/Makefile
+		cp -r ${WORK_SPACE}/ti-utils/ini_files $ROOTFS/lib/firmware/ti-connectivity
 	fi
 	if [ x"$stage" = "xclean" ]
 	then
@@ -751,8 +750,11 @@ case $package in
 					ti-utils "install"
 				fi
 				;;
+			all)
+				ti-utils "all"
+				;;
 			*)
-				echo "Error: illegal action for hostapd"
+				echo "Error: illegal action for calibrator"
 				exit 1
 				;;
 		esac
