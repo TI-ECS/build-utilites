@@ -760,16 +760,19 @@ case $package in
 		esac
 		;;
 	firmware)
-		if [ x$stage != "xinstall" ]
+		if [  x$stage = "xclean" -o x$stage = "xinstall"  -o x$stage = "xall"   ]
 		then
+
+			if [ ! -d ti-utils/firmware ]
+			then
+				ti-utils "download"
+			fi
+
+			ti-utils-firmware $2 
+		else
 			echo "illegal action for firmware"
 			exit 1
 		fi
-		if [ ! -d ti-utils/firmware ]
-		then
-			ti-utils "download"
-		fi
-		ti-utils-firmware
 		;;
 	crda)
 		case $stage in
@@ -812,7 +815,7 @@ case $package in
 		wpa_supplicant "all"
 		crda "all"
 		ti-utils "all"
-		ti-utils-firmware
+		ti-utils-firmware "all"
 		compat-wireless "all"
 		;;
 	clean-all)
@@ -823,6 +826,7 @@ case $package in
 		iw "clean"
 		openssl "clean"
 		libnl "clean"
+		ti-utils-firmware "clean"
 		;;
 	*)
 		usage
