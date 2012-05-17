@@ -480,7 +480,6 @@ function check_env()
 ############################# MAIN ##############################################
 # First building environment should be checked
 check_env || exit 1
-exit
 if [ -z $CROSS_COMPILE ]
 then
 	#lets find some
