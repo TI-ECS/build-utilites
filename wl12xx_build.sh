@@ -1,5 +1,24 @@
 #!/bin/bash
 
+BUILD_VERSION="r5"
+#### R4
+#compat_download_target[r4]="https://gforge.ti.com/gf/download/frsrelease/801/5434/ti-compat-wireless-wl12xx-2012-02-06-r4-12.tgz ti-compat-wireless-wl12xx-2012-02-06-r4-12.tgz http://processors.wiki.ti.com/images/a/aa/Compat-wireless-patches.zip"
+#ti_utils_download_target[r4]="git://github.com/TI-ECS/ti-utils.git"
+#ti_utils_commit_ids[r4]="aaffc13e6c804291ac7dcefdcec181c0207ff67a"
+#hostap_download_target[r4]="git://w1.fi/srv/git/hostap.git"
+#hostap_commit_id[r4]="83fa07226debc2f7082b6ccd62dbb1cd47c30472"
+#hostap_patches[r4]="http://processors.wiki.ti.com/images/8/8a/Hostapd-wpa-supplicant-patches.zip"
+#### R5-SP2
+declare -A compat_download_target["r5"]="https://gforge.ti.com/gf/download/frsrelease/864/5621/ti-compat-wireless-wl12xx-2012-05-17-r5-18.tar.gz http://processors.wiki.ti.com/images/6/6e/Compat-wireless-patches-r5.zip"
+
+declare -A ti_utils_download_target["r5"]="git://github.com/TI-OpenLink/ti-utils.git"
+declare -A ti_utils_commit_id["r5"]="ol_R5.00.18"
+
+declare -A hostap_download_target["r5"]="git://github.com/TI-OpenLink/hostap.git"
+declare -A hostap_commit_id["r5"]="ol_R5.00.18"
+declare -A hostap_patches["r5"]="http://processors.wiki.ti.com/images/3/3c/Hostapd-wpa-supplicant-patches-r5.zip"
+
+
 if [ ! -e setup-env ]
 then
 	echo "No setup-env"
@@ -35,19 +54,41 @@ function git_clone ()
 function compat-wireless()
 {
 	stage=$1
+
+
 	if [ x"$stage" = "xdownload"  -o x"$stage" = "xall" ]
 	then
-		#download https://gforge.ti.com/gf/download/frsrelease/768/5331/ti-compat-wireless-wl12xx-r4-12-12-20.tar.gz ti-compat-wireless-wl12xx-r4-12-12-20.tar.gz
-		#tar xzf ti-compat-wireless-wl12xx-r4-12-12-20.tar.gz
-		download https://gforge.ti.com/gf/download/frsrelease/801/5434/ti-compat-wireless-wl12xx-2012-02-06-r4-12.tgz ti-compat-wireless-wl12xx-2012-02-06-r4-12.tgz
-		tar xzf ti-compat-wireless-wl12xx-2012-02-06-r4-12.tgz
-		cd ${WORK_SPACE}/compat-wireless || exit 1
-		download http://processors.wiki.ti.com/images/a/aa/Compat-wireless-patches.zip Compat-wireless-patches.zip
-		mkdir tmp-patches
-		cd tmp-patches
-		unzip ../Compat-wireless-patches.zip && cd -
-		for i in `$LS tmp-patches`; do patch -p1 -i tmp-patches/$i || exit 1; done
-		res=`./scripts/driver-select wl12xx`
+		for url in ${compat_download_target["$BUILD_VERSION"]}
+		do
+			file=`basename $url`
+			download $url $file
+			local EXT=${url/*./}
+			case $EXT in 
+				"gz")
+					[ ! -d ${WORK_SPACE}/compat-wireless ] && tar xzf $file
+					;;
+
+				"zip")
+					if [ ! -e ${WORK_SPACE}/compat-wireless/patches-${BUILD_VERSION}.done ]
+					then
+						echo "Applying patches"
+						cd ${WORK_SPACE}/compat-wireless || exit 1
+						mkdir tmp-patches
+						cd tmp-patches
+						unzip ${WORK_SPACE}/$file
+						local -a files=(*.patch)
+						cd -
+						for(( i=0; i<${#files[@]}; i++ ))
+						do
+							patch -p1 -i tmp-patches/${files[$i]} || exit 1;
+						done
+						res=`./scripts/driver-select wl12xx`
+						touch patches-${BUILD_VERSION}.done
+					fi
+					;;
+			esac
+		done
+		
 	fi
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
@@ -63,7 +104,7 @@ function compat-wireless()
 	if [ x"$stage" = "xclean" ]
 	then
 		cd $WORK_SPACE/compat-wireless
-		make KLIB=${ROOTFS} uninstall
+		#make KLIB=${ROOTFS} uninstall
 		cd $WORK_SPACE && rm -rf compat-wireless
 	fi
 
@@ -124,7 +165,6 @@ function iw ()
 	then
 		cd $WORK_SPACE/iw
 		make clean
-		cd $WORK_SPAC
 	fi
 	cd $WORK_SPACE
 }
@@ -158,7 +198,7 @@ function libnl ()
 	then
 		cd $WORK_SPACE/libnl-2.0
 		make uninstall
-		cd $WORK_SPACE
+		cd .. && rm -rf libnl-2.0
 	fi
 	cd $WORK_SPACE
 
@@ -191,18 +231,19 @@ function openssl ()
 	then
 		cd ${WORK_SPACE}/openssl-1.0.0d
 		rm -f ${ROOTFS}/usr/lib/*ssl* ${ROOTFS}/usr/lib/pkgconfig/*ssl*
-		cd $WORK_SPACE && rm -rf openssl-1.0.0d
+		cd .. && rm -rf openssl-1.0.0d
 	fi
 	cd $WORK_SPACE
 }
 function ti-utils ()
 {
 	stage=$1
+
 	if [ x"$stage" = x"download" -o x"$stage" = "xall" ]
 	then
-		git_clone git://github.com/TI-ECS/ti-utils.git ti-utils
+		git_clone "${ti_utils_download_target[$BUILD_VERSION]}" ti-utils
 		cd ${WORK_SPACE}/ti-utils
-		git reset --hard aaffc13e6c804291ac7dcefdcec181c0207ff67a
+		git reset --hard "${ti_utils_commit_id[$BUILD_VERSION]}"
 	fi
 
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
@@ -213,14 +254,20 @@ function ti-utils ()
 	if [ x"$stage" = "xinstall" -o x"$stage" = "xall" ]
 	then
 		cd ${WORK_SPACE}/ti-utils
-		NFSROOT=${ROOTFS} make install || exit 1
+		#NFSROOT=${ROOTFS} make install || exit 1
+		if [ ! -x calibrator ]
+		then
+			echo "calibrator is not built, run 'make' first"
+			exit 1
+		fi
+		cp -f ./calibrator ${ROOTFS}/home/root
+		chmod 755 ${ROOTFS}/home/root/calibrator
 	fi
 	if [ x"$stage" = "xclean" ]
 	then
 		cd ${WORK_SPACE}/ti-utils
 		NFSROOT=${ROOTFS} make clean
-		rm ${ROOTFS}/home/root/calibrator ${ROOTFS}/home/root/wl12xx-tool.sh
-		cd $WORK_SPACE
+		rm -f ${ROOTFS}/home/root/calibrator ${ROOTFS}/home/root/wl12xx-tool.sh
 	fi
 	cd $WORK_SPACE
 }
@@ -231,34 +278,55 @@ function ti-utils-firmware()
 	if [ x"$stage" = "xinstall" -o x"$stage" = "xall" ]
 	then
 		mkdir -p $ROOTFS/lib/firmware/ti-connectivity
-		cp ${WORK_SPACE}/ti-utils/firmware/* $ROOTFS/lib/firmware/ti-connectivity
-		rm -f $ROOTFS/lib/firmware/ti-connectivity/Makefile
-		cp -r ${WORK_SPACE}/ti-utils/ini_files $ROOTFS/lib/firmware/ti-connectivity
+		case ${BUILD_VERSION} in
+			"r4")
+				cp ${WORK_SPACE}/ti-utils/firmware/* $ROOTFS/lib/firmware/ti-connectivity
+				rm -f $ROOTFS/lib/firmware/ti-connectivity/Makefile
+				cp -r ${WORK_SPACE}/ti-utils/ini_files $ROOTFS/lib/firmware/ti-connectivity
+				;;
+			"r5")
+				cp ${WORK_SPACE}/ti-utils/hw/firmware/* $ROOTFS/lib/firmware/ti-connectivity
+				rm -f $ROOTFS/lib/hw/firmware/ti-connectivity/Makefile
+				cp -r ${WORK_SPACE}/ti-utils/hw/ini_files $ROOTFS/lib/firmware/ti-connectivity
+				;;
+		esac
+
 	fi
 	if [ x"$stage" = "xclean" ]
 	then
-		rm -f $ROOTFS/lib/firmware/ti-connectivity
 		rm -rf $ROOTFS/lib/firmware/ti-connectivity
-		cd $WORK_SPACE
 	fi
+	cd $WORK_SPACE
 }
 
 function hostap_patching ()
 {
-	[ -e ${WORK_SPACE}/hostap/patches.83fa07226deb/patches.83fa07226deb.done ] && return
-	download  "http://processors.wiki.ti.com/images/8/8a/Hostapd-wpa-supplicant-patches.zip" Hostapd-wpa-supplicant-patches.zip
-	mkdir patches.83fa07226deb
-	cd patches.83fa07226deb && unzip ../Hostapd-wpa-supplicant-patches.zip && cd -
-	for i in `$LS patches.83fa07226deb/*.patch`
+	local patch_dir
+	local filename=`basename ${hostap_patches[$BUILD_VERSION]}`
+
+	case ${BUILD_VERSION} in
+		"r4")
+			patch_dir=patches.83fa07226deb
+			;;
+		"r5")
+			patch_dir=patches-r5
+			;;
+	esac
+	[ -e ${WORK_SPACE}/hostap/$patch_dir/${patch_dir}.done ] && return
+	download  "${hostap_patches[$BUILD_VERSION]}" "${filename}"
+	mkdir $patch_dir
+	cd $patch_dir && unzip ../$filename && cd -
+	local files=($patch_dir/*.patch)
+	for (( i=0; i<${#files[@]};i++))
 	do 
-		patch -p1 -i $i
+		patch -p1 -i "${files[$i]}"
 		if [ $? -ne 0 ]
 		then
-			echo "Patch patches.83fa07226deb/$i failed. Exiting..."
+			echo "Patch $patch_dir/$i failed. Exiting..."
 			exit 1
 		fi
 	done
-	touch patches.83fa07226deb/patches.83fa07226deb.done
+	touch $patch_dir/$patch_dir.done
 }
 function make_hostapd_defconfig ()
 {
@@ -300,16 +368,16 @@ function hostap()
 	stage=$1
 	if [ x"$stage" = x"download" -o x"$stage" = "xall" ]
 	then
-		git_clone git://w1.fi/srv/git/hostap.git hostap
+		git_clone "${hostap_download_target[$BUILD_VERSION]}" hostap
 		cd ${WORK_SPACE}/hostap
-		git reset --hard 83fa07226debc2f7082b6ccd62dbb1cd47c30472
+		git reset --hard "${hostap_commit_id[$BUILD_VERSION]}"
 		hostap_patching
 	fi
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
 		cd ${WORK_SPACE}/hostap/hostapd
 		make_hostapd_defconfig
-		make clean
+		make clean || exit 1
 		make || exit 1
 	fi
 	if [ x"$stage" = "xinstall" -o x"$stage" = "xall" ]
@@ -323,7 +391,6 @@ function hostap()
 		make clean
 		cd ../wpa_supplicant
 		make clean
-		cd $WORK_SPACE
 	fi
 	cd $WORK_SPACE
 
@@ -463,6 +530,7 @@ function package_dir_exists()
 }
 function check_env()
 {
+	[ -e ${WORK_SPACE}/.check_env.stamp ] && return 0
 	which dpkg 2>&1>/dev/null || return 0
 	err=0
 	ret=0
@@ -527,6 +595,7 @@ fi
 if [ ! -d $WORK_SPACE ]
 then
 	mkdir -p $WORK_SPACE
+	touch ${WORK_SPACE}/.check_env.stamp
 fi
 cd $WORK_SPACE
 
@@ -714,7 +783,7 @@ case $package in
 				compat-wireless "all"
 				;;
 			*)
-				echo "Error: illegal action for hostapd"
+				echo "Error: illegal action for wl12xx_modules"
 				exit 1
 				;;
 		esac
@@ -763,7 +832,7 @@ case $package in
 		if [  x$stage = "xclean" -o x$stage = "xinstall"  -o x$stage = "xall"   ]
 		then
 
-			if [ ! -d ti-utils/firmware ]
+			if [ ! -d ti-utils/ ]
 			then
 				ti-utils "download"
 			fi
