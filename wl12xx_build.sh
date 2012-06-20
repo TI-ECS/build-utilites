@@ -25,6 +25,7 @@ then
 	exit 1
 fi
 source setup-env
+unset PKG_CONFIG_SYSROOT_DIR
 ME=$0
 components="libnl openssl iw hostap wpa_supplicant crda ti-utils ti-utils-firmware compat-wireless"
 
@@ -309,7 +310,8 @@ function hostap_patching ()
 			patch_dir=patches.83fa07226deb
 			;;
 		"r5")
-			patch_dir=patches-r5
+			return
+			#patch_dir=patches-r5
 			;;
 	esac
 	[ -e ${WORK_SPACE}/hostap/$patch_dir/${patch_dir}.done ] && return
@@ -510,7 +512,7 @@ function usage ()
 function check_libs()
 {
 	local openssl=`pkg-config --exists openssl`
-	local libnl=`pkg-config --exists libnl`
+	local libnl=`pkg-config --exists libnl-2.0`
 	package=$1
 
 	if [ $openssl -ne 0 -o $libnl -ne 0 ]
