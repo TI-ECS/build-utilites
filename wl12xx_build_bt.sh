@@ -63,7 +63,13 @@ function all()
 	bt-enable 1
 }
 
-
+function apply_patches()
+{
+	test [ -e $LS ] && echo "Please set full path of ls utility in setup-env file." && exit 1
+	files=`$LS *.patch`
+	for f in ${files}; do patch -p1 -i ${f} || exit 1; done
+	return 0
+}
 function bt-modules()
 {
 	if [ x"$KLIB_BUILD" = "x" ]; then
@@ -154,9 +160,9 @@ function libIConv()
 function zlib()
 {
 	cd ${WORK_SPACE} || exit 1
-	COMPONENT_NAME="zlib-1.2.6.tar.gz"
-	COMPONENT_DIR="zlib-1.2.6"
-	download_component "http://zlib.net/zlib-1.2.6.tar.gz"
+	COMPONENT_NAME="zlib-1.2.7.tar.gz"
+	COMPONENT_DIR="zlib-1.2.7"
+	download_component "http://zlib.net/zlib-1.2.7.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
 		./configure --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
@@ -276,14 +282,12 @@ function bluez()
 	download_component "http://kernel.org/pub/linux/bluetooth/bluez-4.98.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		wget http://processors.wiki.ti.com/images/d/d2/BlueZ_patches-v1.zip || exit 1
-		unzip BlueZ_patches-v1.zip || exit 1
+		#wget http://processors.wiki.ti.com/images/7/7e/BlueZ_patches-v2.zip || exit 1
+		unzip ${WORK_SPACE}/BlueZ_patches-v2.zip || exit 1
 
-		patch -p1 < ./0001-socket-enable-for-bluez-4_98.patch || exit 1
-		patch -p1 < ./0001-bluez-enable-source-interface.patch || exit 1
-		patch -p1 < ./bluez4-fix-synchronization-between-bluetoothd-and-dr.patch || exit 1
+		apply_patches
 
-		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-tools --enable-dund --disable-alsa --enable-test --enable-audio --enable-serial --enable-service --enable-hidd || exit 1
+		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-tools --enable-dund --enable-alsa --enable-test --enable-audio --enable-serial --enable-service --enable-hidd --enable-gstreamer --enable-usb --enable-tools --enable-bccmd --enable-hid2hci --enable-dfutool --enable-pand --disable-cups
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
@@ -348,7 +352,7 @@ function alsa-lib
 {
 	cd ${WORK_SPACE} || exit 1
 	COMPONENT_NAME="alsa-lib-1.0.24.1.tar.gz"
-	COMPONENT_DIR="alsa-lib-1.0.25"
+	COMPONENT_DIR="alsa-lib-1.0.26"
 	download_component "http://fossies.org/linux/misc/alsa-lib-1.0.24.1.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
@@ -415,9 +419,10 @@ function obexd
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
 		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} || exit 1
-		wget http://processors.wiki.ti.com/images/2/22/Obexd-fix-UTF-conversions-1.tar.gz || exit 1
-		tar -xzvf Obexd-fix-UTF-conversions-1.tar.gz || exit 1
-		patch -p 1 < 0001-obexd-fix-UTF-conversions.patch || exit 1
+		#wget http://processors.wiki.ti.com/images/2/22/Obexd-fix-UTF-conversions-1.tar.gz || exit 1
+		wget http://processors.wiki.ti.com/images/4/43/Obexd-patches_v1.tar.gz || exit 1
+		tar -xzvf Obexd-patches_v1.tar.gz || exit 1
+		apply_patches
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		add_fingerprint 1
