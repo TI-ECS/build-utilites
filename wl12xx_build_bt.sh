@@ -282,9 +282,8 @@ function bluez()
 	download_component "http://kernel.org/pub/linux/bluetooth/bluez-4.98.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		#wget http://processors.wiki.ti.com/images/7/7e/BlueZ_patches-v2.zip || exit 1
-		unzip ${WORK_SPACE}/BlueZ_patches-v2.zip || exit 1
-
+		wget http://processors.wiki.ti.com/images/7/7e/BlueZ_patches-v2.zip || exit 1
+		unzip BlueZ_patches-v2.zip || exit 1
 		apply_patches
 
 		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-tools --enable-dund --enable-alsa --enable-test --enable-audio --enable-serial --enable-service --enable-hidd --enable-gstreamer --enable-usb --enable-tools --enable-bccmd --enable-hid2hci --enable-dfutool --enable-pand --disable-cups
