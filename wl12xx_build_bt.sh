@@ -104,7 +104,7 @@ function expat()
 	download_component "http://downloads.sourceforge.net/project/expat/expat/2.0.1/expat-2.0.1.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
@@ -129,7 +129,7 @@ function dbus()
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
 		echo "ac_cv_func_pipe2=no" > arm-linux.cache || exit 1
-		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --cache-file=arm-linux.cache --disable-inotify --without-x || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --cache-file=arm-linux.cache --disable-inotify --without-x || exit 1
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
@@ -148,7 +148,7 @@ function libIConv()
 	download_component "http://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.13.1.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
@@ -182,7 +182,7 @@ function gettext()
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
 		echo "ac_cv_func_unsetenv=no" > arm-linux.cache || exit 1
-		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --cache-file=arm-linux.cache || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --cache-file=arm-linux.cache || exit 1
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
@@ -211,7 +211,7 @@ function glib()
 		ac_cv_func_posix_getpwuid_r=yes
 		ac_cv_func_posix_getgrgid_r=yes
 		ac_cv_func_pipe2=no" > arm-linux.cache || exit 1
-		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --cache-file=arm-linux.cache --with-libiconv=gnu || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --cache-file=arm-linux.cache --with-libiconv=gnu || exit 1
 		sed -i 's/\(^Libs: .*\)/\1 -liconv/g' glib-2.0.pc || exit 1
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
@@ -237,7 +237,7 @@ function dbus-glib()
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
 		echo "ac_cv_have_abstract_sockets=yes" > arm-linux.cache || exit 1
-		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --cache-file=arm-linux.cache || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --cache-file=arm-linux.cache || exit 1
 		sed -i 's/examples//g' dbus/Makefile || exit 1
 		sed -i 's/tools test/test/g' Makefile || exit 1
 		make || exit 1
@@ -257,7 +257,7 @@ function check()
 	download_component "http://downloads.sourceforge.net/check/check-0.9.6.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
@@ -287,7 +287,7 @@ function bluez()
 
 		apply_patches
 
-		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-tools --enable-dund --enable-alsa --enable-test --enable-audio --enable-serial --enable-service --enable-hidd --enable-gstreamer --enable-usb --enable-tools --enable-bccmd --enable-hid2hci --enable-dfutool --enable-pand --disable-cups
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-tools --enable-dund --enable-alsa --enable-test --enable-audio --enable-serial --enable-service --enable-hidd --enable-gstreamer --enable-usb --enable-tools --enable-bccmd --enable-hid2hci --enable-dfutool --enable-pand --disable-cups
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
@@ -306,7 +306,7 @@ function hcidump
 	download_component "http://pkgs.fedoraproject.org/repo/pkgs/bluez-hcidump/bluez-hcidump-2.2.tar.gz/3c298a8be67099fe227f3e4d9de539d5/bluez-hcidump-2.2.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		add_fingerprint 1
@@ -322,7 +322,7 @@ function ncurses
 	download_component "http://ftp.gnu.org/gnu/ncurses/ncurses-5.9.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR}  -with-shared --without-debug --without-normal || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR}  -with-shared --without-debug --without-normal || exit 1
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		add_fingerprint 1
@@ -338,7 +338,7 @@ function readline
 	download_component "ftp://ftp.cwru.edu/pub/bash/readline-6.2.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
@@ -356,7 +356,7 @@ function alsa-lib
 	download_component "http://fossies.org/linux/misc/alsa-lib-1.0.24.1.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --prefix=${MY_PREFIX} --host=arm-arago-linux-gnueabi --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
+		./configure --prefix=${MY_PREFIX} --host=${BUILD_HOST} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
@@ -375,7 +375,7 @@ function openobex
 	#	wget 'http://mirror.anl.gov/pub/linux/bluetooth/openobex-1.5.tar.gz' || exit 1
 		add_fingerprint 0
 		sed -i '11227 i *)\n;;' configure || exit 1
-		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-apps --disable-usb || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-apps --disable-usb || exit 1
 		sed -i 's/^\(libdir=\).*/\1\$\{prefix\}\/lib/g' openobex.pc || exit 1
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
@@ -393,7 +393,7 @@ function libical
 	download_component "http://downloads.sourceforge.net/project/freeassociation/libical/libical-0.44/libical-0.44.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} || exit 1
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
@@ -418,7 +418,7 @@ function obexd
 	download_component "http://www.kernel.org/pub/linux/bluetooth/obexd-0.34.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} || exit 1
 		#wget http://processors.wiki.ti.com/images/2/22/Obexd-fix-UTF-conversions-1.tar.gz || exit 1
 		wget http://processors.wiki.ti.com/images/4/43/Obexd-patches_v1.tar.gz || exit 1
 		tar -xzvf Obexd-patches_v1.tar.gz || exit 1
@@ -457,7 +457,7 @@ function bt-obex
 		/usr/bin/autoheader || exit 1
 		/usr/bin/automake --add-missing || exit 1
 		/usr/bin/autoconf || exit 1
-		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} || exit 1
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		add_fingerprint 1
@@ -666,7 +666,6 @@ old_dir=`pwd`
 MACHINE_TYPE=""
 
 source setup-env || exit 1
-
 # if there are no sufficient arguments...
 if  [ $# -lt 2 ]; then
 	usage
@@ -685,6 +684,7 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
+BUILD_HOST=`echo $CROSS_COMPILE | sed s/-$//`
 
 if [ x"$ROOTFS" = "x" ]; then
 	echo "Please set ROOTFS variable to point to your root filesystem"
