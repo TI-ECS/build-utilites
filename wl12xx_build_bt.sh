@@ -65,7 +65,7 @@ function all()
 
 function apply_patches()
 {
-	test [ -e $LS ] && echo "Please set full path of ls utility in setup-env file." && exit 1
+	[ ! -e $LS ] && echo "Please set full path of ls utility in setup-env file." && exit 1
 	files=`$LS *.patch`
 	for f in ${files}; do patch -p1 -i ${f} || exit 1; done
 	return 0
@@ -83,10 +83,9 @@ function bt-modules()
 	download_component "https://gforge.ti.com/gf/download/frsrelease/802/5435/ti-compat-bluetooth-2012-02-20.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		wget http://processors.wiki.ti.com/images/9/99/Compat-patch-zip-v1.zip || exit 1
-		unzip Compat-patch-zip-v1.zip || exit 1
-		patch -p1 < 0001-compat-bluetooth-2.6-removed-unused-BT-modules-from-.patch || exit 1
-		patch -p1 < 0002-Bluetooth-Fix-l2cap-conn-failures-for-ssp-devices.patch || exit 1
+		[ ! -e Compat-patch-zip-v1.zip ] && { wget http://processors.wiki.ti.com/images/9/99/Compat-patch-zip-v1.zip || exit 1; }
+		unzip -o Compat-patch-zip-v1.zip || exit 1
+		apply_patches
 
 		./scripts/driver-select bt || exit 1
 		make KLIB=${ROOTFS} "install-modules" || exit 1
@@ -282,8 +281,8 @@ function bluez()
 	download_component "http://kernel.org/pub/linux/bluetooth/bluez-4.98.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		wget http://processors.wiki.ti.com/images/7/7e/BlueZ_patches-v2.zip || exit 1
-		unzip BlueZ_patches-v2.zip || exit 1
+		[ ! -e BlueZ_patches-v2.zip ] && { wget http://processors.wiki.ti.com/images/7/7e/BlueZ_patches-v2.zip || exit 1; }
+		unzip -o BlueZ_patches-v2.zip || exit 1
 		apply_patches
 
 		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-tools --enable-dund --enable-alsa --enable-test --enable-audio --enable-serial --enable-service --enable-hidd --enable-gstreamer --enable-usb --enable-tools --enable-bccmd --enable-hid2hci --enable-dfutool --enable-pand --disable-cups
@@ -418,9 +417,8 @@ function obexd
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
 		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} || exit 1
-		#wget http://processors.wiki.ti.com/images/2/22/Obexd-fix-UTF-conversions-1.tar.gz || exit 1
 		wget http://processors.wiki.ti.com/images/4/43/Obexd-patches_v1.tar.gz || exit 1
-		tar -xzvf Obexd-patches_v1.tar.gz || exit 1
+		echo "Openning archive: Obexd-patches_v1.tar.gz" && tar -xzf Obexd-patches_v1.tar.gz || exit 1
 		apply_patches
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
@@ -444,13 +442,11 @@ function bt-obex
 	COMPONENT_DIR="bluez-tools"
 	download_component "git://gitorious.org/bluez-tools/bluez-tools.git"
 	if [ ${CURRENT_OPTION} = "2" ]; then
-  #	wget 'http://processors.wiki.ti.com/images/5/5b/0001-GStatBuf-fix-compilation-issue.zip'
-  #	unzip 0001-GStatBuf-fix-compilation-issue.zip || exit 1
 		add_fingerprint 0
-		wget 'http://processors.wiki.ti.com/images/f/f5/Bt-obex-patches.zip' || exit 1
-		unzip Bt-obex-patches.zip || exit 1
-		patch -p1 < 0001-GStatBuf-fix-compilation-issue.patch || exit 1
-		patch -p1 < 0001-add-dependency-for-ncurses.patch || exit 1
+		[ ! -e Bt-obex-patches.zip ] && { wget 'http://processors.wiki.ti.com/images/f/f5/Bt-obex-patches.zip' || exit 1; }
+		unzip -o Bt-obex-patches.zip || exit 1
+		apply_patches
+
 		/usr/bin/libtoolize || exit 1
 		/usr/bin/aclocal || exit 1
 		/usr/bin/autoheader || exit 1
@@ -522,9 +518,9 @@ function bt-enable
 	COMPONENT_DIR="bt_enable"
 	download_component "git://github.com/TI-ECS/bt_enable.git"
 	if [ ${CURRENT_OPTION} = "2" ]; then
-	  wget 'http://processors.wiki.ti.com/images/8/8f/Bt-enable-standalone-makefile.zip' || exit 1
-	  unzip Bt-enable-standalone-makefile.zip || exit 1
-	  patch -p1 < 0001-bt-enable-standalone-makefile.patch || exit 1
+		[ ! -e Bt-enable-standalone-makefile.zip ] && { wget 'http://processors.wiki.ti.com/images/8/8f/Bt-enable-standalone-makefile.zip' || exit 1; }
+	  unzip -o Bt-enable-standalone-makefile.zip || exit 1
+	  apply_patches
 
 	  if [ x"$MACHINE_TYPE" = "x" ]; then
 		  get_machine_used
@@ -614,15 +610,16 @@ function download_component()
 				rm -rf ${COMPONENT_DIR} || exit 1
 			fi
 
-			local TAR_FLAGS="-xzvf"
+			local TAR_FLAGS="-xzf"
 
 			if [ ${EXT} = "bz2" ]; then
-				TAR_FLAGS="-xjvf"
+				TAR_FLAGS="-xjf"
 			fi
 			# if component doesn't exist, bring it
 			if [ ! -e ${COMPONENT_NAME} ]; then
 				wget $1 || exit 1
 			fi
+			echo "Openning archive: ${COMPONENT_NAME}"
 			tar ${TAR_FLAGS} ${COMPONENT_NAME} || exit 1 
 			# move to the directory if not empty
 			if [ ! x"${COMPONENT_DIR}" = "x" ]; then			
