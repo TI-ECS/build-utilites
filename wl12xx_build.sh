@@ -83,7 +83,6 @@ function compat-wireless()
 						do
 							patch -p1 -i tmp-patches/${files[$i]} || exit 1;
 						done
-                                                patch -p1 -i ${WORK_SPACE}/0001-wl12xx-reduce-current-consumption-in-RX.patch || exit 1;
 						res=`./scripts/driver-select wl12xx`
 						touch patches-${BUILD_VERSION}.done
 					fi

@@ -333,7 +333,7 @@ function readline
 	cd ${WORK_SPACE} || exit 1
 	COMPONENT_NAME="readline-6.2.tar.gz"
 	COMPONENT_DIR="readline-6.2"
-	download_component "ftp://ftp.cwru.edu/pub/bash/readline-6.2.tar.gz"
+	download_component " http://ftp.gnu.org/gnu/readline/readline-6.2.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
 		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
