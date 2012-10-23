@@ -88,7 +88,7 @@ function bt-modules()
 		apply_patches
 
 		./scripts/driver-select bt || exit 1
-		make KLIB=${ROOTFS} "install-modules" || exit 1
+		make KLIB=${ROOTFS} INSTALL_MOD_PATH=${ROOTFS} "install-modules" || exit 1
 		add_fingerprint 1
 	fi
 	echo "bt-modules built successfully"
@@ -103,8 +103,8 @@ function expat()
 	download_component "http://downloads.sourceforge.net/project/expat/expat/2.0.1/expat-2.0.1.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
-		make || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} 2>&1>${BUILD_LOG_FILE} || exit 1
+		make 2>&1>>${BUILD_LOG_FILE} || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
 		add_fingerprint 1
@@ -128,8 +128,8 @@ function dbus()
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
 		echo "ac_cv_func_pipe2=no" > arm-linux.cache || exit 1
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --cache-file=arm-linux.cache --disable-inotify --without-x || exit 1
-		make || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --cache-file=arm-linux.cache --disable-inotify --without-x 2>&1>>${BUILD_LOG_FILE} || exit 1
+		make 2>&1>>${BUILD_LOG_FILE} || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
 		echo "messagebus:x:102:105::${MY_LOCALSTATEDIR}/run/dbus:/bin/false" >> ${ROOTFS}${MY_SYSCONFDIR}/passwd || exit 1
@@ -147,8 +147,8 @@ function libIConv()
 	download_component "http://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.13.1.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
-		make || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} 2>&1>>${BUILD_LOG_FILE} || exit 1
+		make 2>&1>>${BUILD_LOG_FILE} || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
 		add_fingerprint 1
@@ -164,8 +164,8 @@ function zlib()
 	download_component "http://zlib.net/zlib-1.2.7.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
-		make || exit 1
+		./configure --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} 2>&1>>${BUILD_LOG_FILE} || exit 1
+		make 2>&1>>${BUILD_LOG_FILE} || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		add_fingerprint 1
 	fi
@@ -181,8 +181,8 @@ function gettext()
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
 		echo "ac_cv_func_unsetenv=no" > arm-linux.cache || exit 1
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --cache-file=arm-linux.cache || exit 1
-		make || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --cache-file=arm-linux.cache 2>&1>>${BUILD_LOG_FILE} || exit 1
+		make 2>&1>>${BUILD_LOG_FILE} || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
 		add_fingerprint 1
@@ -210,9 +210,9 @@ function glib()
 		ac_cv_func_posix_getpwuid_r=yes
 		ac_cv_func_posix_getgrgid_r=yes
 		ac_cv_func_pipe2=no" > arm-linux.cache || exit 1
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --cache-file=arm-linux.cache --with-libiconv=gnu || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --cache-file=arm-linux.cache --with-libiconv=gnu 2>&1>>${BUILD_LOG_FILE} || exit 1
 		sed -i 's/\(^Libs: .*\)/\1 -liconv/g' glib-2.0.pc || exit 1
-		make || exit 1
+		make 2>&1>>${BUILD_LOG_FILE} || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
 		add_fingerprint 1
@@ -236,10 +236,10 @@ function dbus-glib()
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
 		echo "ac_cv_have_abstract_sockets=yes" > arm-linux.cache || exit 1
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --cache-file=arm-linux.cache || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --cache-file=arm-linux.cache 2>&1>>${BUILD_LOG_FILE} || exit 1
 		sed -i 's/examples//g' dbus/Makefile || exit 1
 		sed -i 's/tools test/test/g' Makefile || exit 1
-		make || exit 1
+		make 2>&1>>${BUILD_LOG_FILE} || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
 		add_fingerprint 1
@@ -256,8 +256,8 @@ function check()
 	download_component "http://downloads.sourceforge.net/check/check-0.9.6.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
-		make || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} 2>&1>>${BUILD_LOG_FILE} || exit 1
+		make 2>&1>>${BUILD_LOG_FILE} || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
 		add_fingerprint 1
@@ -285,8 +285,8 @@ function bluez()
 		unzip -o BlueZ_patches-v2.zip || exit 1
 		apply_patches
 
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-tools --enable-dund --enable-alsa --enable-test --enable-audio --enable-serial --enable-service --enable-hidd --enable-gstreamer --enable-usb --enable-tools --enable-bccmd --enable-hid2hci --enable-dfutool --enable-pand --disable-cups
-		make || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-tools --enable-dund --enable-alsa --enable-test --enable-audio --enable-serial --enable-service --enable-hidd --enable-gstreamer --enable-usb --enable-tools --enable-bccmd --enable-hid2hci --enable-dfutool --enable-pand --disable-cups 2>&1>>${BUILD_LOG_FILE}
+		make 2>&1>>${BUILD_LOG_FILE} || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
 		cp audio/audio.conf tools/rfcomm.conf input/input.conf ${ROOTFS}${MY_SYSCONFDIR}/bluetooth/ || exit 1
@@ -304,8 +304,8 @@ function hcidump
 	download_component "http://pkgs.fedoraproject.org/repo/pkgs/bluez-hcidump/bluez-hcidump-2.2.tar.gz/3c298a8be67099fe227f3e4d9de539d5/bluez-hcidump-2.2.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
-		make || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} 2>&1>>${BUILD_LOG_FILE} || exit 1
+		make 2>&1>>${BUILD_LOG_FILE} || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		add_fingerprint 1
 	fi
@@ -320,8 +320,8 @@ function ncurses
 	download_component "http://ftp.gnu.org/gnu/ncurses/ncurses-5.9.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR}  -with-shared --without-debug --without-normal || exit 1
-		make || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR}  -with-shared --without-debug --without-normal 2>&1>>${BUILD_LOG_FILE} || exit 1
+		make 2>&1>>${BUILD_LOG_FILE} || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		add_fingerprint 1
 	fi
@@ -336,8 +336,8 @@ function readline
 	download_component " http://ftp.gnu.org/gnu/readline/readline-6.2.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
-		make || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} 2>&1>>${BUILD_LOG_FILE} || exit 1
+		make 2>&1>>${BUILD_LOG_FILE} || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
 		add_fingerprint 1
@@ -354,8 +354,8 @@ function alsa-lib
 	download_component "http://fossies.org/linux/misc/alsa-lib-1.0.24.1.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --prefix=${MY_PREFIX} --host=${BUILD_HOST} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
-		make || exit 1
+		./configure --prefix=${MY_PREFIX} --host=${BUILD_HOST} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} 2>&1>>${BUILD_LOG_FILE} || exit 1
+		make 2>&1>>${BUILD_LOG_FILE} || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
 		add_fingerprint 1
@@ -372,10 +372,10 @@ function openobex
 	if [ ${CURRENT_OPTION} = "2" ]; then
 	#	wget 'http://mirror.anl.gov/pub/linux/bluetooth/openobex-1.5.tar.gz' || exit 1
 		add_fingerprint 0
-		sed -i '11227 i *)\n;;' configure || exit 1
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-apps --disable-usb || exit 1
+		sed -i '11227 i *)\n;;' configure 2>&1>>${BUILD_LOG_FILE} || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-apps --disable-usb 2>&1>>${BUILD_LOG_FILE} || exit 1
 		sed -i 's/^\(libdir=\).*/\1\$\{prefix\}\/lib/g' openobex.pc || exit 1
-		make || exit 1
+		make 2>&1>>${BUILD_LOG_FILE} || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
 		add_fingerprint 1
@@ -391,8 +391,8 @@ function libical
 	download_component "http://downloads.sourceforge.net/project/freeassociation/libical/libical-0.44/libical-0.44.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} || exit 1
-		make || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} 2>&1>>${BUILD_LOG_FILE} || exit 1
+		make 2>&1>>${BUILD_LOG_FILE} || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
 		add_fingerprint 1
@@ -416,11 +416,11 @@ function obexd
 	download_component "http://www.kernel.org/pub/linux/bluetooth/obexd-0.34.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} 2>&1>>${BUILD_LOG_FILE} || exit 1
 		wget http://processors.wiki.ti.com/images/4/43/Obexd-patches_v1.tar.gz || exit 1
 		echo "Openning archive: Obexd-patches_v1.tar.gz" && tar -xzf Obexd-patches_v1.tar.gz || exit 1
 		apply_patches
-		make || exit 1
+		make 2>&1>>${BUILD_LOG_FILE} || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		add_fingerprint 1
 	fi
@@ -452,8 +452,8 @@ function bt-obex
 		/usr/bin/autoheader || exit 1
 		/usr/bin/automake --add-missing || exit 1
 		/usr/bin/autoconf || exit 1
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} || exit 1
-		make || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} 2>&1>>${BUILD_LOG_FILE} || exit 1
+		make 2>&1>>${BUILD_LOG_FILE} || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		add_fingerprint 1
 	fi
@@ -658,6 +658,32 @@ function get_machine_used()
 	esac
 }
 
+function check_env()
+{
+        [ -e ${WORK_SPACE}/.check_env.stamp ] && return 0
+        which dpkg
+	if [ $? -ne 0 ]
+	then
+		echo "The following packages should be installed on the system:"
+		echo "bash bison flex perl bc python python-m2crypto corkscrew"
+		echo "git autoconf automake libtool gettext patch libglib2.0-dev"
+		echo "Please check before to continue."
+		return 0
+	fi
+        err=0
+        ret=0
+	packages="bash bison flex perl bc python python-m2crypto corkscrew git autoconf automake libtool gettext patch libglib2.0-dev"
+        for p in ${packages}
+        do
+                echo -n "Checking ${p}..."
+                present=`dpkg-query -W ${p} 2>/dev/null | awk '{print $1}'`
+                [ x"${present}" != x"${p}" ] && echo "Package ${p} is not found. Please run 'apt-get install ${p}' to install it." && err=1 && ret=1
+                [ ${err} -ne 1 ] && echo "OK"
+                err=0
+        done
+        return ${ret}
+}
+############################################# MAIN ###############################################
 old_dir=`pwd`
 MACHINE_TYPE=""
 
@@ -694,7 +720,9 @@ fi
 
 FINGURE_PRINT_DIR="${WORK_SPACE}/.FingurePrint"
 mkdir -p ${FINGURE_PRINT_DIR} || exit 1
-
+check_env || exit 1
+touch ${WORK_SPACE}/.check_env.stamp
+BUILD_LOG_FILE=${FINGURE_PRINT_DIR}/build.log
 USER_OPTION=0
 CURRENT_OPTION=0
 
