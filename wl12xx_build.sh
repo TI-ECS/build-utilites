@@ -674,7 +674,7 @@ function check_env()
 	which dpkg 2>&1>/dev/null || return 0
 	err=0
 	ret=0
-	packages="python python-m2crypto bash bison flex perl bc corkscrew git-core git-email git-gui git-svn gitk"
+	packages="bash bison flex perl bc python python-m2crypto corkscrew git autoconf automake libtool gettext patch"
 	for p in ${packages}
 	do
 		echo -n "Checking ${p}..."
