@@ -1,0 +1,29 @@
+From 1b09d640c1781e9b28f803c3dc20cea1a1a653a8 Mon Sep 17 00:00:00 2001
+From: Vita Preskovsky <vitap@ti.com>
+Date: Tue, 30 Oct 2012 09:54:58 +0200
+Subject: [PATCH] bluez: define _GNU_SOURCE macro
+
+	* O_CLOEXEC flag used in bluez requires _GNU_SOURCE macro to be defined.
+
+
+Signed-off-by: Vita Preskovsky <vitap@ti.com>
+---
+ profiles/input/hog_device.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/profiles/input/hog_device.c b/profiles/input/hog_device.c
+index f6e945e..576fb3e 100644
+--- a/profiles/input/hog_device.c
++++ b/profiles/input/hog_device.c
+@@ -26,7 +26,7 @@
+ #ifdef HAVE_CONFIG_H
+ #include <config.h>
+ #endif
+-
++#define _GNU_SOURCE
+ #include <stdlib.h>
+ #include <stdbool.h>
+ #include <errno.h>
+-- 
+1.7.9.5
+

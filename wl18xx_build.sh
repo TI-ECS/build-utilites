@@ -1,16 +1,15 @@
 #!/bin/bash
 
-BUILD_VERSION="r5"
-#### R5-SP2
-declare -A compat_download_target["r5"]="https://gforge.ti.com/gf/download/frsrelease/864/5621/ti-compat-wireless-wl12xx-2012-05-17-r5-18.tar.gz http://processors.wiki.ti.com/images/6/6e/Compat-wireless-patches-r5.zip"
-
-declare -A ti_utils_download_target["r5"]="git://github.com/TI-OpenLink/ti-utils.git"
-declare -A ti_utils_commit_id["r5"]="ol_R5.00.18"
-
-declare -A hostap_download_target["r5"]="git://github.com/TI-OpenLink/hostap.git"
-declare -A hostap_commit_id["r5"]="ol_R5.00.18"
-declare -A hostap_patches["r5"]="http://processors.wiki.ti.com/images/3/3c/Hostapd-wpa-supplicant-patches-r5.zip"
-
+#### R8-a4.05
+declare -A compat_download_target["r8"]="https://gforge.ti.com/gf/download/frsrelease/973/6259/ti_compat_wireless_wl18xx_R8_A4_05.tar.gz  https://gforge.ti.com/gf/download/frsrelease/974/6260/compat-wireless-patches-r8-a4-05.zip"
+declare -A ti_utils_download_target["r8"]="git://github.com/TI-OpenLink/18xx-ti-utils.git"
+declare -A ti_utils_commit_id["r8"]="ol_r8.a4.05"
+declare -A wl18xx_fw_download_target["r8"]="git://github.com/TI-OpenLink/wl18xx_fw.git"
+declare -A ti_utils_commit_id["r8"]="ol_r8.a4.05"
+declare -A hostap_download_target["r8"]="git://github.com/TI-OpenLink/hostap.git"
+declare -A hostap_commit_id["r8"]="ol_r8.a4.05"
+declare -A hostap_patches["r8"]=""
+declare -A conf_and_scripts["r8"]="https://gforge.ti.com/gf/download/frsrelease/910/5880/ecs-conf-files-and-scripts-2012-08-01.tar.gz"
 
 if [ ! -e setup-env ]
 then
@@ -20,7 +19,7 @@ fi
 source setup-env
 unset PKG_CONFIG_SYSROOT_DIR
 ME=$0
-components="libnl openssl iw hostap wpa_supplicant crda ti-utils ti-utils-firmware compat-wireless"
+components="libnl openssl iw hostap wpa_supplicant crda ti-utils wl18xx-firmware compat-wireless"
 
 function download ()
 {
@@ -49,9 +48,9 @@ function compat-wireless()
 {
 	stage=$1
 
-
 	if [ x"$stage" = "xdownload"  -o x"$stage" = "xall" ]
 	then
+		cd ${WORK_SPACE}
 		for url in ${compat_download_target["$BUILD_VERSION"]}
 		do
 			file=`basename $url`
@@ -76,7 +75,7 @@ function compat-wireless()
 						do
 							patch -p1 -i tmp-patches/${files[$i]} || exit 1;
 						done
-						res=`./scripts/driver-select wl12xx`
+						res=`./scripts/driver-select wl18xx`
 						touch patches-${BUILD_VERSION}.done
 					fi
 					;;
@@ -91,6 +90,10 @@ function compat-wireless()
 	fi
 	if [ x"$stage" = "xinstall"  -o x"$stage" = "xall" ]
 	then
+		find ${ROOTFS} -name "wl12xx*.ko" | xargs rm -f
+		find ${ROOTFS} -name "mac80211.ko" | xargs rm -f
+		find ${ROOTFS} -name "cfg80211.ko" | xargs rm -f
+		find ${ROOTFS} -name "compat.ko" | xargs rm -f
 		cd ${WORK_SPACE}/compat-wireless
 		make KLIB_BUILD=${KLIB_BUILD} KLIB=${ROOTFS} install-modules
 	fi
@@ -110,9 +113,10 @@ function crda ()
 	if [ x"$stage" = "xdownload"  -o x"$stage" = "xall" ]
 	then
 		download "http://wireless.kernel.org/download/crda/crda-1.1.1.tar.bz2" "crda-1.1.1.tar.bz2"
+                download "http://linuxwireless.org/download/wireless-regdb/regulatory.bins/2011.04.28-regulatory.bin" "2011.04.28-regulatory.bin"
 		tar xjf crda-1.1.1.tar.bz2
 		cd ${WORK_SPACE}/crda-1.1.1
-		download http://linuxwireless.org/download/wireless-regdb/regulatory.bins/2011.04.28-regulatory.bin 2011.04.28-regulatory.bin
+		cp ${WORK_SPACE}/2011.04.28-regulatory.bin .
 	fi
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
@@ -235,53 +239,58 @@ function ti-utils ()
 
 	if [ x"$stage" = x"download" -o x"$stage" = "xall" ]
 	then
-		git_clone "${ti_utils_download_target[$BUILD_VERSION]}" ti-utils
-		cd ${WORK_SPACE}/ti-utils
+		git_clone "${ti_utils_download_target[$BUILD_VERSION]}" 18xx-ti-utils
+		cd ${WORK_SPACE}/18xx-ti-utils
 		git reset --hard "${ti_utils_commit_id[$BUILD_VERSION]}"
 	fi
 
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
-		cd ${WORK_SPACE}/ti-utils
+		cd ${WORK_SPACE}/18xx-ti-utils
 		NFSROOT=${ROOTFS} make || exit 1
 	fi
 	if [ x"$stage" = "xinstall" -o x"$stage" = "xall" ]
 	then
-		cd ${WORK_SPACE}/ti-utils
+		cd ${WORK_SPACE}/18xx-ti-utils
 		#NFSROOT=${ROOTFS} make install || exit 1
 		if [ ! -x calibrator ]
 		then
 			echo "calibrator is not built, run 'make' first"
 			exit 1
 		fi
-		cp -f ./calibrator ${ROOTFS}/home/root
-		chmod 755 ${ROOTFS}/home/root/calibrator
+		cp -f ./calibrator ${ROOTFS}/usr/bin
+		chmod 755 ${ROOTFS}/usr/bin/calibrator
 	fi
 	if [ x"$stage" = "xclean" ]
 	then
-		cd ${WORK_SPACE}/ti-utils
+		cd ${WORK_SPACE}/18xx-ti-utils
 		NFSROOT=${ROOTFS} make clean
-		rm -f ${ROOTFS}/home/root/calibrator ${ROOTFS}/home/root/wl12xx-tool.sh
+		rm -f ${ROOTFS}/usr/bin/calibrator
+		cd ${WORK_SPACE}/18xx-ti-utils/wlconf
+		NFSROOT=${ROOTFS} make clean
+		rm -fr ${ROOTFS}/usr/sbin/wlconf
+		rm -fr ${ROOTFS}/home/root/scripts/wlconf/
 	fi
 	cd $WORK_SPACE
 }
-function ti-utils-firmware()
+
+function wl18xx-firmware()
 {
 	stage=$1
 	 
+	if [ x"$stage" = x"download" -o x"$stage" = "xall" ]
+	then
+		git_clone "${wl18xx_fw_download_target[$BUILD_VERSION]}" wl18xx_fw
+		cd ${WORK_SPACE}/wl18xx_fw
+		git reset --hard "${ti_utils_commit_id[$BUILD_VERSION]}"
+	fi
+
 	if [ x"$stage" = "xinstall" -o x"$stage" = "xall" ]
 	then
 		mkdir -p $ROOTFS/lib/firmware/ti-connectivity
 		case ${BUILD_VERSION} in
-			"r4")
-				cp ${WORK_SPACE}/ti-utils/firmware/* $ROOTFS/lib/firmware/ti-connectivity
-				rm -f $ROOTFS/lib/firmware/ti-connectivity/Makefile
-				cp -r ${WORK_SPACE}/ti-utils/ini_files $ROOTFS/lib/firmware/ti-connectivity
-				;;
-			"r5")
-				cp ${WORK_SPACE}/ti-utils/hw/firmware/* $ROOTFS/lib/firmware/ti-connectivity
-				rm -f $ROOTFS/lib/hw/firmware/ti-connectivity/Makefile
-				cp -r ${WORK_SPACE}/ti-utils/hw/ini_files $ROOTFS/lib/firmware/ti-connectivity
+			"r8")
+				cp ${WORK_SPACE}/wl18xx_fw/*.bin $ROOTFS/lib/firmware/ti-connectivity
 				;;
 		esac
 
@@ -299,10 +308,7 @@ function hostap_patching ()
 	local filename=`basename ${hostap_patches[$BUILD_VERSION]}`
 
 	case ${BUILD_VERSION} in
-		"r4")
-			patch_dir=patches.83fa07226deb
-			;;
-		"r5")
+		"r8")
 			return
 			#patch_dir=patches-r5
 			;;
@@ -497,6 +503,7 @@ function hostap()
 	stage=$1
 	if [ x"$stage" = x"download" -o x"$stage" = "xall" ]
 	then
+		cd ${WORK_SPACE}
 		git_clone "${hostap_download_target[$BUILD_VERSION]}" hostap
 		cd ${WORK_SPACE}/hostap
 		git reset --hard "${hostap_commit_id[$BUILD_VERSION]}"
@@ -514,6 +521,7 @@ function hostap()
 		cd ${WORK_SPACE}/hostap/hostapd
 		make install || exit 1
 		for i in hostapd hostapd_cli; do cp -f $i ${ROOTFS}/usr/sbin/$i || exit 1; done
+		cp hostapd.conf ${ROOTFS}/etc/ 
 	fi
 	if [ x"$stage" = "xclean" ]
 	then
@@ -525,7 +533,6 @@ function hostap()
 	cd $WORK_SPACE
 
 }
-
 function make_wpa_sup_defconfig ()
 {
 	cat > .config <<"wpa_sup_defconfig"
@@ -600,7 +607,6 @@ CONFIG_P2P=y
 CONFIG_AP=y
 wpa_sup_defconfig
 }
-
 function wpa_supplicant ()
 {
 	stage=$1
@@ -616,13 +622,65 @@ function wpa_supplicant ()
 		cd ${WORK_SPACE}/hostap/wpa_supplicant
 		make install || exit 1
 		for i in wpa_supplicant wpa_cli wpa_passphrase; do cp $i ${ROOTFS}/usr/sbin//$i || exit 1; done
+		cp wpa_supplicant.conf ${ROOTFS}/etc/ 
+	fi
+	cd $WORK_SPACE
+}
+
+function ecs_tools()
+{
+	stage=$1
+	 
+	if [ x"$stage" = x"download" -o x"$stage" = "xall" ]
+	then
+		if [ ! -d ${WORK_SPACE}/conf_and_scripts ]
+		then
+			echo "Downloading scripts and configuration files"
+			cd ${WORK_SPACE}
+			mkdir -p ${WORK_SPACE}/conf_and_scripts
+			file=`basename ${conf_and_scripts["$BUILD_VERSION"]}`
+			download ${conf_and_scripts["$BUILD_VERSION"]} $file
+			cd ${WORK_SPACE}/conf_and_scripts
+			tar xzf ${WORK_SPACE}/${file}
+			cd ${WORK_SPACE}
+		fi
+	fi
+	cd $WORK_SPACE
+}
+
+function wlconf ()
+{
+	stage=$1
+	if [ x"$stage" = x"build" -o x"$stage" = "xall" ]
+	then
+		cd ${WORK_SPACE}/18xx-ti-utils/wlconf
+		NFSROOT=${ROOTFS} make || exit 1
+	fi
+	if [ x"$stage" = x"install" -o x"$stage" = "xall" ]
+	then
+		cd ${WORK_SPACE}/18xx-ti-utils/wlconf
+		if [ ! -x wlconf ]
+		then
+			echo "wlconf is not built, run 'make' first"
+			exit 1
+		fi
+		mkdir -p ${ROOTFS}/usr/sbin/wlconf
+		mkdir -p ${ROOTFS}/usr/sbin/wlconf/official_inis
+		cp -f ./wlconf ${ROOTFS}/usr/sbin/wlconf
+		chmod 755 ${ROOTFS}/usr/sbin/wlconf
+		for i in dictionary.txt struct.bin wl18xx-conf-default.bin README example.conf example.ini; do cp $i ${ROOTFS}/usr/sbin/wlconf/$i || exit 1; done
+		cp official_inis/* ${ROOTFS}/usr/sbin/wlconf/official_inis
+		mkdir -p ${ROOTFS}/home/root/scripts/wlconf
+		ecs_tools "download"
+		cp ${WORK_SPACE}/conf_and_scripts/scripts/wlconf/* ${ROOTFS}/home/root/scripts/wlconf
+		chmod 755 ${ROOTFS}/home/root/scripts/wlconf/*
 	fi
 	cd $WORK_SPACE
 }
 
 function usage ()
 {
-	echo "This script compiles one of following utilities: libnl, openssl, hostapd, wpa_supplicant,wl12xx_modules,firmware,crda,calibrator"
+	echo "This script compiles one of following utilities: libnl, openssl, hostapd, wpa_supplicant,wl18xx_modules,firmware,crda,calibrator"
 	echo "by calling specific utility name and action."
 	echo "In case the options is 'all' all utilities will be downloaded and installed on root file system."
 	echo "File setup-env contains all required environment variables, for example:"
@@ -632,9 +690,10 @@ function usage ()
 	echo "                              openssl"
 	echo "                              hostapd"
 	echo "                              wpa_supplicant"
-	echo "                              wl12xx_modules"
+	echo "                              wl18xx_modules"
 	echo "                              firmware"
 	echo "                              crda"
+	echo "                              wlconf"
 	echo "                              calibrator>  action <download|build|install>"
 	echo "                      all"
 	echo "                      clean-all"
@@ -667,7 +726,7 @@ function check_env()
 	which dpkg 2>&1>/dev/null || return 0
 	err=0
 	ret=0
-	packages="bash bison flex perl bc python python-m2crypto corkscrew git autoconf automake libtool gettext patch"
+	packages="python python-m2crypto bash bison flex perl bc corkscrew"
 	for p in ${packages}
 	do
 		echo -n "Checking ${p}..."
@@ -730,7 +789,7 @@ then
 	mkdir -p $WORK_SPACE
 	touch ${WORK_SPACE}/.check_env.stamp
 fi
-cd $WORK_SPACE
+cd ${WORK_SPACE}
 
 case $package in
 	libnl)
@@ -888,7 +947,7 @@ case $package in
 				;;
 		esac
 		;;
-	wl12xx_modules)
+	wl18xx_modules)
 		case $stage in
 			download)
 				package_dir_exists ${WORK_SPACE}/compat-wireless compat-wireless || exit 1
@@ -916,7 +975,7 @@ case $package in
 				compat-wireless "all"
 				;;
 			*)
-				echo "Error: illegal action for wl12xx_modules"
+				echo "Error: illegal action for wl18xx_modules"
 				exit 1
 				;;
 		esac
@@ -927,13 +986,13 @@ case $package in
 			download)
 				if [ -d ${WORK_SPACE}/ti-utils ]
 				then
-					echo "Calibrator is part of ti-utils package that already exists at: ${WORK_SPACE}/ti-utils"
+					echo "Calibrator is part of ti-utils package that already exists at: ${WORK_SPACE}/18xx-ti-utils"
 					exit 0
 				fi
 				ti-utils "download"
 				;;
 			build)
-				if [ ! -d ${WORK_SPACE}/ti-utils ]
+				if [ ! -d ${WORK_SPACE}/18xx-ti-utils ]
 				then
 					ti-utils "download"
 				fi
@@ -941,11 +1000,11 @@ case $package in
 				ti-utils "build"
 				;;
 			install)
-				if [ ! -d ${WORK_SPACE}/ti-utils ]
+				if [ ! -d ${WORK_SPACE}/18xx-ti-utils ]
 				then
 					ti-utils "all"
 				else
-					if [ ! -e ${WORK_SPACE}/ti-utils/calibrator ]
+					if [ ! -e ${WORK_SPACE}/18xx-ti-utils/calibrator ]
 					then
 						ti-utils "build"
 					fi
@@ -961,16 +1020,59 @@ case $package in
 				;;
 		esac
 		;;
+	wlconf)
+		case $stage in
+			download)
+				if [ ! -d ${WORK_SPACE}/18xx-ti-utils ]
+				then
+					ti-utils "download"
+				fi
+				if [ ! -d ${WORK_SPACE}/conf_and_scripts ]
+				then
+					ecs_tools "download"
+				fi
+				;;
+			build)
+				if [ ! -d ${WORK_SPACE}/18xx-ti-utils ]
+				then
+					ti-utils "download"
+				fi
+				wlconf "build"
+				;;
+			install)
+				if [ ! -d ${WORK_SPACE}/18xx-ti-utils ]
+				then
+					ti-utils "download"
+				fi
+				if [ ! -e ${WORK_SPACE}/18xx-ti-utils/wlconf/wlconf ]
+				then
+					wlconf "build"
+				fi
+				if [ ! -d ${WORK_SPACE}/conf_and_scripts ]
+				then
+					ecs_tools "download"
+				fi
+				wlconf "install"
+				;;
+			all)
+				wlconf "all"
+				;;
+			*)
+				echo "Error: illegal action for wlconf"
+				exit 1
+				;;
+		esac
+		;;
 	firmware)
-		if [  x$stage = "xclean" -o x$stage = "xinstall"  -o x$stage = "xall"   ]
+		if [  x$stage = "xclean"  -o  x$stage = "xdownload" -o x$stage = "xinstall"  -o x$stage = "xall" ]
 		then
 
-			if [ ! -d ti-utils/ ]
+			if [ ! -d wl18xx_fw/ ]
 			then
-				ti-utils "download"
+				wl18xx-firmware "download"
 			fi
 
-			ti-utils-firmware $2 
+			wl18xx-firmware $2 
 		else
 			echo "illegal action for firmware"
 			exit 1
@@ -1017,8 +1119,9 @@ case $package in
 		wpa_supplicant "all"
 		crda "all"
 		ti-utils "all"
-		ti-utils-firmware "all"
+		wl18xx-firmware "all"
 		compat-wireless "all"
+		wlconf "all"
 		;;
 	clean-all)
 		compat-wireless "clean"
@@ -1028,7 +1131,7 @@ case $package in
 		iw "clean"
 		openssl "clean"
 		libnl "clean"
-		ti-utils-firmware "clean"
+		wl18xx-firmware "clean"
 		;;
 	*)
 		usage

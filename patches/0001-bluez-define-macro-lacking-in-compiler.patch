@@ -1,0 +1,34 @@
+From 9c87b79edd1e92ba969eb43e7b8dcc1f3bd7c419 Mon Sep 17 00:00:00 2001
+From: Vita Preskovsky <vitap@ti.com>
+Date: Tue, 30 Oct 2012 10:12:43 +0200
+Subject: [PATCH] bluez: define macro lacking in compiler
+
+	* SO_DOMAIN and SO_PROTOCOL macros are lacking in arago
+	  cross compiler.
+
+
+Signed-off-by: Vita Preskovsky <vitap@ti.com>
+---
+ btio/btio.c |    6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/btio/btio.c b/btio/btio.c
+index 9557503..e3b7088 100644
+--- a/btio/btio.c
++++ b/btio/btio.c
+@@ -38,6 +38,12 @@
+ 
+ #include "btio.h"
+ 
++#ifndef SO_PROTOCOL
++#define SO_PROTOCOL             38
++#endif
++#ifndef SO_DOMAIN
++#define SO_DOMAIN               39
++#endif
+ #ifndef BT_FLUSHABLE
+ #define BT_FLUSHABLE	8
+ #endif
+-- 
+1.7.9.5
+

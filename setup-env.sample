@@ -15,6 +15,7 @@ export PATH="$PATH:<toolchain path>"
 export ROOTFS=<path to root filesystem>
 export WORK_SPACE=<working directory>
 export KLIB_BUILD=<linux-kernel>
+export BUILD_VERSION="r8"
 # MACHINE_TYPE - The target machine type. Can have one of the following values: "am1808" , "omap3evm" , "am335x"
 # This is needed to build bluetooth components.
 # This parameter is not relevant for ti814x board.

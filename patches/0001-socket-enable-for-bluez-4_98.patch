@@ -1,0 +1,25 @@
+From e142a28897c0b0fe9e61259a96dad6fb9f818ecd Mon Sep 17 00:00:00 2001
+From: Moosa <moosa.baransi@babcomsoftware.com>
+Date: Wed, 22 Feb 2012 10:06:37 +0200
+Subject: [PATCH] socket enable for bluez 0_98
+
+* This is necessary for working with A2DP
+---
+ audio/audio.conf |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/audio/audio.conf b/audio/audio.conf
+index 302e046..9533ada 100644
+--- a/audio/audio.conf
++++ b/audio/audio.conf
+@@ -3,6 +3,7 @@
+ # This section contains options which are not specific to any
+ # particular interface
+ [General]
++Enable=Socket
+ 
+ # Switch to master role for incoming connections (defaults to true)
+ #Master=true
+-- 
+1.7.1
+

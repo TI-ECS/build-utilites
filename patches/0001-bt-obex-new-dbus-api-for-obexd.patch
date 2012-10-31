@@ -1,0 +1,287 @@
+From 0d60f8a9da3f0e77d8703da96d4f9e954f3c7c04 Mon Sep 17 00:00:00 2001
+From: Vita Preskovsky <vitap@ti.com>
+Date: Tue, 30 Oct 2012 18:37:39 +0200
+Subject: [PATCH] bt-obex: new dbus api for obexd
+
+ * obexd's dbus APIs are changed from "org.openobex" to "org.bluez.obex"
+
+
+Signed-off-by: Vita Preskovsky <vitap@ti.com>
+
+diff --git a/src/lib/obexd-api.h b/src/lib/obexd-api.h
+index 09695f6..7716df4 100644
+--- a/src/lib/obexd-api.h
++++ b/src/lib/obexd-api.h
+@@ -33,8 +33,8 @@
+ #include <dbus/dbus-glib.h>
+ 
+ #ifdef OBEX_SUPPORT
+-#define OBEXS_DBUS_NAME "org.openobex"
+-#define OBEXC_DBUS_NAME "org.openobex.client"
++#define OBEXS_DBUS_NAME "org.bluez.obex"
++#define OBEXC_DBUS_NAME "org.bluez.obex.client"
+ 
+ /* OBEXD DBus API */
+ #include "obexd/obexagent.h"
+diff --git a/src/lib/obexd/obexagent.h b/src/lib/obexd/obexagent.h
+index b94fb2c..5bc5f9c 100644
+--- a/src/lib/obexd/obexagent.h
++++ b/src/lib/obexd/obexagent.h
+@@ -89,7 +89,7 @@ static const DBusGObjectInfo dbus_glib_obexagent_object_info = {
+ 	0,
+ 	dbus_glib_obexagent_methods,
+ 	7,
+-	"org.openobex.Agent\0Authorize\0S\0transfer\0I\0o\0bt_address\0I\0s\0name\0I\0s\0type\0I\0s\0length\0I\0i\0time\0I\0i\0arg6\0O\0F\0N\0s\0\0org.openobex.Agent\0Cancel\0S\0\0org.openobex.Agent\0Release\0S\0\0org.openobex.Agent\0Request\0S\0transfer\0I\0o\0arg1\0O\0F\0N\0s\0\0org.openobex.Agent\0Progress\0S\0transfer\0I\0o\0transferred\0I\0t\0\0org.openobex.Agent\0Complete\0S\0transfer\0I\0o\0\0org.openobex.Agent\0Error\0S\0transfer\0I\0o\0message\0I\0s\0\0\0",
++	"org.bluez.obex.Agent\0Authorize\0S\0transfer\0I\0o\0bt_address\0I\0s\0name\0I\0s\0type\0I\0s\0length\0I\0i\0time\0I\0i\0arg6\0O\0F\0N\0s\0\0org.bluez.obex.Agent\0Cancel\0S\0\0org.bluez.obex.Agent\0Release\0S\0\0org.bluez.obex.Agent\0Request\0S\0transfer\0I\0o\0arg1\0O\0F\0N\0s\0\0org.bluez.obex.Agent\0Progress\0S\0transfer\0I\0o\0transferred\0I\0t\0\0org.bluez.obex.Agent\0Complete\0S\0transfer\0I\0o\0\0org.bluez.obex.Agent\0Error\0S\0transfer\0I\0o\0message\0I\0s\0\0\0",
+ 	"\0",
+ 	"\0"
+ };
+diff --git a/src/lib/obexd/obexclient.c b/src/lib/obexd/obexclient.c
+index d8cfa78..b8ac43e 100644
+--- a/src/lib/obexd/obexclient.c
++++ b/src/lib/obexd/obexclient.c
+@@ -83,7 +83,7 @@ static void obexclient_init(OBEXClient *self)
+ 	GError *error = NULL;
+ 
+ 	/* Getting introspection XML */
+-	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.openobex.client", OBEXCLIENT_DBUS_PATH, "org.freedesktop.DBus.Introspectable");
++	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.bluez.obex.client", OBEXCLIENT_DBUS_PATH, "org.freedesktop.DBus.Introspectable");
+ 	self->priv->introspection_xml = NULL;
+ 	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
+ 		g_critical("%s", error->message);
+@@ -97,7 +97,7 @@ static void obexclient_init(OBEXClient *self)
+ 	}
+ 	g_free(check_intf_regex_str);
+ 
+-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.openobex.client", OBEXCLIENT_DBUS_PATH, OBEXCLIENT_DBUS_INTERFACE);
++	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.bluez.obex.client", OBEXCLIENT_DBUS_PATH, OBEXCLIENT_DBUS_INTERFACE);
+ }
+ 
+ /* Methods */
+diff --git a/src/lib/obexd/obexclient.h b/src/lib/obexd/obexclient.h
+index d999b76..59799db 100644
+--- a/src/lib/obexd/obexclient.h
++++ b/src/lib/obexd/obexclient.h
+@@ -27,7 +27,7 @@
+ #include <glib-object.h>
+ 
+ #define OBEXCLIENT_DBUS_PATH "/"
+-#define OBEXCLIENT_DBUS_INTERFACE "org.openobex.Client"
++#define OBEXCLIENT_DBUS_INTERFACE "org.bluez.obex.Client"
+ 
+ /*
+  * Type macros
+diff --git a/src/lib/obexd/obexclient_file_transfer.c b/src/lib/obexd/obexclient_file_transfer.c
+index 05fa36d..683cdfa 100644
+--- a/src/lib/obexd/obexclient_file_transfer.c
++++ b/src/lib/obexd/obexclient_file_transfer.c
+@@ -109,7 +109,7 @@ static void obexclient_file_transfer_post_init(OBEXClientFileTransfer *self, con
+ 	GError *error = NULL;
+ 
+ 	/* Getting introspection XML */
+-	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.openobex.client", dbus_object_path, "org.freedesktop.DBus.Introspectable");
++	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.bluez.obex.client", dbus_object_path, "org.freedesktop.DBus.Introspectable");
+ 	self->priv->introspection_xml = NULL;
+ 	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
+ 		g_critical("%s", error->message);
+@@ -122,7 +122,7 @@ static void obexclient_file_transfer_post_init(OBEXClientFileTransfer *self, con
+ 		g_assert(FALSE);
+ 	}
+ 	g_free(check_intf_regex_str);
+-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.openobex.client", dbus_object_path, OBEXCLIENT_FILE_TRANSFER_DBUS_INTERFACE);
++	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.bluez.obex.client", dbus_object_path, OBEXCLIENT_FILE_TRANSFER_DBUS_INTERFACE);
+ }
+ 
+ static void _obexclient_file_transfer_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
+diff --git a/src/lib/obexd/obexclient_file_transfer.h b/src/lib/obexd/obexclient_file_transfer.h
+index 5e796b2..750d411 100644
+--- a/src/lib/obexd/obexclient_file_transfer.h
++++ b/src/lib/obexd/obexclient_file_transfer.h
+@@ -26,7 +26,7 @@
+ 
+ #include <glib-object.h>
+ 
+-#define OBEXCLIENT_FILE_TRANSFER_DBUS_INTERFACE "org.openobex.FileTransfer"
++#define OBEXCLIENT_FILE_TRANSFER_DBUS_INTERFACE "org.bluez.obex.FileTransfer"
+ 
+ /*
+  * Type macros
+diff --git a/src/lib/obexd/obexclient_session.c b/src/lib/obexd/obexclient_session.c
+index a5b52f8..3b882d1 100644
+--- a/src/lib/obexd/obexclient_session.c
++++ b/src/lib/obexd/obexclient_session.c
+@@ -133,7 +133,7 @@ static void obexclient_session_post_init(OBEXClientSession *self, const gchar *d
+ 	GError *error = NULL;
+ 
+ 	/* Getting introspection XML */
+-	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.openobex.client", dbus_object_path, "org.freedesktop.DBus.Introspectable");
++	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.bluez.obex.client", dbus_object_path, "org.freedesktop.DBus.Introspectable");
+ 	self->priv->introspection_xml = NULL;
+ 	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
+ 		g_critical("%s", error->message);
+@@ -146,7 +146,7 @@ static void obexclient_session_post_init(OBEXClientSession *self, const gchar *d
+ 		g_assert(FALSE);
+ 	}
+ 	g_free(check_intf_regex_str);
+-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.openobex.client", dbus_object_path, OBEXCLIENT_SESSION_DBUS_INTERFACE);
++	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.bluez.obex.client", dbus_object_path, OBEXCLIENT_SESSION_DBUS_INTERFACE);
+ 
+ 	/* Properties init */
+ 	GHashTable *properties = obexclient_session_get_properties(self, &error);
+diff --git a/src/lib/obexd/obexclient_session.h b/src/lib/obexd/obexclient_session.h
+index 87af06d..bffd844 100644
+--- a/src/lib/obexd/obexclient_session.h
++++ b/src/lib/obexd/obexclient_session.h
+@@ -26,7 +26,7 @@
+ 
+ #include <glib-object.h>
+ 
+-#define OBEXCLIENT_SESSION_DBUS_INTERFACE "org.openobex.Session"
++#define OBEXCLIENT_SESSION_DBUS_INTERFACE "org.bluez.obex.Session"
+ 
+ /*
+  * Type macros
+diff --git a/src/lib/obexd/obexclient_transfer.c b/src/lib/obexd/obexclient_transfer.c
+index 68c4bf3..e11e2d4 100644
+--- a/src/lib/obexd/obexclient_transfer.c
++++ b/src/lib/obexd/obexclient_transfer.c
+@@ -133,7 +133,7 @@ static void obexclient_transfer_post_init(OBEXClientTransfer *self, const gchar
+ 	GError *error = NULL;
+ 
+ 	/* Getting introspection XML */
+-	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.openobex.client", dbus_object_path, "org.freedesktop.DBus.Introspectable");
++	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.bluez.obex.client", dbus_object_path, "org.freedesktop.DBus.Introspectable");
+ 	self->priv->introspection_xml = NULL;
+ 	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
+ 		g_critical("%s", error->message);
+@@ -146,7 +146,7 @@ static void obexclient_transfer_post_init(OBEXClientTransfer *self, const gchar
+ 		g_assert(FALSE);
+ 	}
+ 	g_free(check_intf_regex_str);
+-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.openobex.client", dbus_object_path, OBEXCLIENT_TRANSFER_DBUS_INTERFACE);
++	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.bluez.obex.client", dbus_object_path, OBEXCLIENT_TRANSFER_DBUS_INTERFACE);
+ 
+ 	/* Properties init */
+ 	GHashTable *properties = obexclient_transfer_get_properties(self, &error);
+diff --git a/src/lib/obexd/obexclient_transfer.h b/src/lib/obexd/obexclient_transfer.h
+index f84fd69..f92e790 100644
+--- a/src/lib/obexd/obexclient_transfer.h
++++ b/src/lib/obexd/obexclient_transfer.h
+@@ -26,7 +26,7 @@
+ 
+ #include <glib-object.h>
+ 
+-#define OBEXCLIENT_TRANSFER_DBUS_INTERFACE "org.openobex.Transfer"
++#define OBEXCLIENT_TRANSFER_DBUS_INTERFACE "org.bluez.obex.Transfer"
+ 
+ /*
+  * Type macros
+diff --git a/src/lib/obexd/obexmanager.c b/src/lib/obexd/obexmanager.c
+index 1e3e0d4..c77daad 100644
+--- a/src/lib/obexd/obexmanager.c
++++ b/src/lib/obexd/obexmanager.c
+@@ -134,7 +134,7 @@ static void obexmanager_init(OBEXManager *self)
+ 	GError *error = NULL;
+ 
+ 	/* Getting introspection XML */
+-	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.openobex", OBEXMANAGER_DBUS_PATH, "org.freedesktop.DBus.Introspectable");
++	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.bluez.obex", OBEXMANAGER_DBUS_PATH, "org.freedesktop.DBus.Introspectable");
+ 	self->priv->introspection_xml = NULL;
+ 	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
+ 		g_critical("%s", error->message);
+@@ -148,7 +148,7 @@ static void obexmanager_init(OBEXManager *self)
+ 	}
+ 	g_free(check_intf_regex_str);
+ 
+-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.openobex", OBEXMANAGER_DBUS_PATH, OBEXMANAGER_DBUS_INTERFACE);
++	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.bluez.obex", OBEXMANAGER_DBUS_PATH, OBEXMANAGER_DBUS_INTERFACE);
+ 
+ 	/* DBus signals connection */
+ 
+diff --git a/src/lib/obexd/obexmanager.h b/src/lib/obexd/obexmanager.h
+index 203fe59..c0fe168 100644
+--- a/src/lib/obexd/obexmanager.h
++++ b/src/lib/obexd/obexmanager.h
+@@ -27,7 +27,7 @@
+ #include <glib-object.h>
+ 
+ #define OBEXMANAGER_DBUS_PATH "/"
+-#define OBEXMANAGER_DBUS_INTERFACE "org.openobex.Manager"
++#define OBEXMANAGER_DBUS_INTERFACE "org.bluez.obex.Manager"
+ 
+ /*
+  * Type macros
+diff --git a/src/lib/obexd/obexsession.c b/src/lib/obexd/obexsession.c
+index 48380cf..49cbeed 100644
+--- a/src/lib/obexd/obexsession.c
++++ b/src/lib/obexd/obexsession.c
+@@ -120,7 +120,7 @@ static void obexsession_post_init(OBEXSession *self, const gchar *dbus_object_pa
+ 	GError *error = NULL;
+ 
+ 	/* Getting introspection XML */
+-	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.openobex", dbus_object_path, "org.freedesktop.DBus.Introspectable");
++	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.bluez.obex", dbus_object_path, "org.freedesktop.DBus.Introspectable");
+ 	self->priv->introspection_xml = NULL;
+ 	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
+ 		g_critical("%s", error->message);
+@@ -133,7 +133,7 @@ static void obexsession_post_init(OBEXSession *self, const gchar *dbus_object_pa
+ 		g_assert(FALSE);
+ 	}
+ 	g_free(check_intf_regex_str);
+-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.openobex", dbus_object_path, OBEXSESSION_DBUS_INTERFACE);
++	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.bluez.obex", dbus_object_path, OBEXSESSION_DBUS_INTERFACE);
+ 
+ 	/* Properties init */
+ 	GHashTable *properties = obexsession_get_properties(self, &error);
+diff --git a/src/lib/obexd/obexsession.h b/src/lib/obexd/obexsession.h
+index d39e15f..c045859 100644
+--- a/src/lib/obexd/obexsession.h
++++ b/src/lib/obexd/obexsession.h
+@@ -26,7 +26,8 @@
+ 
+ #include <glib-object.h>
+ 
+-#define OBEXSESSION_DBUS_INTERFACE "org.openobex.Session"
++#define OBEXSESSION_DBUS_INTERFACE "org.bluez.obex.Session"
++
+ 
+ /*
+  * Type macros
+diff --git a/src/lib/obexd/obextransfer.c b/src/lib/obexd/obextransfer.c
+index 78dcf52..94c5979 100644
+--- a/src/lib/obexd/obextransfer.c
++++ b/src/lib/obexd/obextransfer.c
+@@ -130,7 +130,7 @@ static void obextransfer_post_init(OBEXTransfer *self, const gchar *dbus_object_
+ 	GError *error = NULL;
+ 
+ 	/* Getting introspection XML */
+-	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.openobex", dbus_object_path, "org.freedesktop.DBus.Introspectable");
++	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.bluez.obex", dbus_object_path, "org.freedesktop.DBus.Introspectable");
+ 	self->priv->introspection_xml = NULL;
+ 	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
+ 		g_critical("%s", error->message);
+@@ -143,7 +143,7 @@ static void obextransfer_post_init(OBEXTransfer *self, const gchar *dbus_object_
+ 		g_assert(FALSE);
+ 	}
+ 	g_free(check_intf_regex_str);
+-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.openobex", dbus_object_path, OBEXTRANSFER_DBUS_INTERFACE);
++	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(session_conn, "org.bluez.obex", dbus_object_path, OBEXTRANSFER_DBUS_INTERFACE);
+ 
+ 	/* DBus signals connection */
+ 
+diff --git a/src/lib/obexd/obextransfer.h b/src/lib/obexd/obextransfer.h
+index 99f3084..3ccdcbd 100644
+--- a/src/lib/obexd/obextransfer.h
++++ b/src/lib/obexd/obextransfer.h
+@@ -26,7 +26,7 @@
+ 
+ #include <glib-object.h>
+ 
+-#define OBEXTRANSFER_DBUS_INTERFACE "org.openobex.Transfer"
++#define OBEXTRANSFER_DBUS_INTERFACE "org.bluez.obex.Transfer"
+ 
+ /*
+  * Type macros
+-- 
+1.7.9.5
+
