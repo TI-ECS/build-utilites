@@ -24,7 +24,7 @@ function expat()
 	download_component "http://downloads.sourceforge.net/project/expat/expat/2.1.0/expat-2.1.0.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --host=arm-arago-linux-gnueabi --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
@@ -188,7 +188,7 @@ function python()
 		mv Parser/pgen Parser/hostpgen || exit 1
 		make distclean || exit 1
 		patch -p1 < ${old_dir}/patches/0001-Python-2.7.3-xcompile.patch || exit 1
-		./configure --host=arm-linux --build=x86_64-linux-gnu --prefix=${MY_PREFIX} --with-system-expat --enable-unicode=ucs2 --without-wctype-functions || exit 1
+		./configure --host=${BUILD_HOST} --build=x86_64-linux-gnu --prefix=${MY_PREFIX} --with-system-expat --enable-unicode=ucs2 --without-wctype-functions || exit 1
 		make HOSTPYTHON=./hostpython HOSTPGEN=./Parser/hostpgen BLDSHARED="${CROSS_COMPILE}gcc -shared" CROSS_COMPILE_TARGET=yes HOSTARCH=arm-linux BUILDARCH=x86_64-linux-gnu || exit 1
 		make install DESTDIR=${ROOTFS} HOSTPYTHON=./hostpython BLDSHARED="${CROSS_COMPILE}gcc -shared" CROSS_COMPILE_TARGET=y || exit 1
 		add_fingerprint 1
@@ -211,7 +211,7 @@ function dbus-python()
 		add_fingerprint 0
 		echo "am_cv_python_pythondir=${MY_PREFIX}/lib/python2.7/site-packages
 		am_cv_python_pyexecdir=${MY_PREFIX}/lib/python2.7/site-packages" > arm-linux.cache || exit 1
-		PYTHON_INCLUDES="-I${ROOTFS}${MY_PREFIX}/include/python2.7/" PYTHON_LIBS="-L${ROOTFS}/${MY_PREFIX}/lib/python2.7" ./configure --host=arm-linux --build=x86_64-linux-gnu --prefix=${MY_PREFIX} --cache-file=arm-linux.cache || exit 1
+		PYTHON_INCLUDES="-I${ROOTFS}${MY_PREFIX}/include/python2.7/" PYTHON_LIBS="-L${ROOTFS}/${MY_PREFIX}/lib/python2.7" ./configure --host=${BUILD_HOST} --build=x86_64-linux-gnu --prefix=${MY_PREFIX} --cache-file=arm-linux.cache || exit 1
 		make PYTHON_INCLUDES="-I${ROOTFS}${MY_PREFIX}/include/python2.7/" || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
@@ -245,7 +245,7 @@ function pygobject()
 		/usr/bin/autoheader || exit 1
 		/usr/bin/automake --add-missing || exit 1
 		/usr/bin/autoconf || exit 1
-		PYTHON_INCLUDES="-I${ROOTFS}${MY_PREFIX}/include/python2.7/" NM=nm ./configure --host=arm-linux --build=x86_64-linux-gnu --prefix=${MY_PREFIX} --cache-file=arm-linux.cache || exit 1
+		PYTHON_INCLUDES="-I${ROOTFS}${MY_PREFIX}/include/python2.7/" NM=nm ./configure --host=${BUILD_HOST} --build=x86_64-linux-gnu --prefix=${MY_PREFIX} --cache-file=arm-linux.cache || exit 1
 		cp host-generate-constants gobject/generate-constants || exit 1
 		make PYTHON_INCLUDES="-I${ROOTFS}${MY_PREFIX}/include/python2.7/" || exit 1
 		make || exit 1
@@ -313,7 +313,7 @@ function libffi()
 	download_component "https://github.com/atgreen/libffi.git"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		./configure --prefix=${MY_PREFIX} CC=${CROSS_COMPILE}gcc LD=${CROSS_COMPILE}ld RANLIB=${CROSS_COMPILE}ranlib --host=arm-linux || exit 1
+		./configure --prefix=${MY_PREFIX} CC=${CROSS_COMPILE}gcc LD=${CROSS_COMPILE}ld RANLIB=${CROSS_COMPILE}ranlib --host=${BUILD_HOST} || exit 1
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
