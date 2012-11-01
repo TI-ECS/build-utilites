@@ -1,0 +1,46 @@
+#!/usr/bin/python
+
+import os
+import sys
+import dbus
+
+bus = dbus.SystemBus()
+
+def extract_list(list):
+	val = "["
+	for i in list:
+		val += " " + str(i)
+	val += " ]"
+	
+	return val
+
+def extract_record(key, list):
+	for i in list:
+		record = dbus.Interface(bus.get_object("org.neard", i),
+						"org.neard.Record")
+
+		properties = record.GetProperties()
+		for key in properties.keys():
+    			if key in ["Representation"]:
+				val = str(properties[key])
+				if val.split(',')[3] == "WLAN":
+                               		print "SSID=%s" % val.split(',')[0]
+                                	print "Security=%s" % val.split(',')[1]
+                                	print "Key=%s" % val.split(',')[2]
+                                	os.system("./connect-to-ap %s %s %s" % (val.split(',')[0], val.split(',')[1], val.split(',')[2]))
+				else:
+                               		print "BD Address=%s" % val.split(',')[0]
+                                	print "Key=%s" % val.split(',')[1]
+                                	print "Song Name=%s" % val.split(',')[2]
+					os.system("./bt-a2dp-demo %s %s %s" % (val.split(',')[0], val.split(',')[1], val.split(',')[2]))
+
+
+tag = dbus.Interface(bus.get_object("org.neard", sys.argv[1]),
+						"org.neard.Tag")
+
+properties = tag.GetProperties()
+
+for key in properties.keys():
+    if key in ["Records"]:
+        extract_record(key, properties[key])
+

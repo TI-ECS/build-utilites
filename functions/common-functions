@@ -295,7 +295,7 @@ function uim
 		install -d ${ROOTFS}${MY_PREFIX}/sbin ${ROOTFS}/etc/init.d
 		install -d ${ROOTFS}/etc/rcS.d
 		make DESTDIR=${ROOTFS} install
-		install -c -m 755 ${old_dir}/scripts/uim-sysfs.sh ${ROOTFS}/etc/init.d/ || exit 1
+		install -c -m 755 ${old_dir}/scripts/uim/uim-sysfs.sh ${ROOTFS}/etc/init.d/ || exit 1
 		cd ${ROOTFS}/etc/init.d/ || exit 1
 		ln -s -f ../init.d/uim-sysfs.sh ../rcS.d/S04uim-sysfs || exit 1
 		add_fingerprint 1

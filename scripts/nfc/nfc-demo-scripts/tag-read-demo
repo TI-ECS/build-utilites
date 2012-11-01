@@ -1,0 +1,75 @@
+#!/usr/bin/python
+
+import gobject
+import sys
+import os
+import dbus
+import dbus.mainloop.glib
+import commands
+
+from dbus.lowlevel import MethodCallMessage, HANDLER_RESULT_NOT_YET_HANDLED
+
+def extract_list(list):
+	val = ""
+	for i in list:
+		val += " " + str(i)
+	return val
+
+def extract_bool(b):
+        if b == dbus.Boolean(1):
+	   val = "true"
+    	else:
+		val = "false"
+	return val	
+
+
+def property_changed_adapter(name, value, path):
+    adapter = path[path.rfind("/") + 1:]
+    if name in ["Polling"]:
+           val = extract_bool(value)
+    elif name in ["Tags"]:
+           val = extract_list(value)
+	   os.system('python dump-tag %s' % val)
+	   mainloop.quit()
+    else:
+	   val = str(value)
+
+
+def property_changed_manager(name, value, path):
+    manager = path[path.rfind("/") + 1:]
+    if name in ["Adapters"]:
+           val = extract_list(value)
+
+    print "[Manager] %s = %s" % (name, val)
+
+
+if __name__ == '__main__':
+	output = commands.getoutput('ps')
+	if 'neard' in output:
+    		print "NFC is up!"
+	else:
+		print "Starting the NFC subsystem..."
+		os.system("neard")
+		os.system("./enable-adapter nfc0")
+
+
+	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+	bus = dbus.SystemBus()
+
+	bus.add_signal_receiver(property_changed_manager,
+				bus_name="org.neard",
+				dbus_interface="org.neard.Manager",
+				signal_name = "PropertyChanged",
+				path_keyword="path")
+
+	bus.add_signal_receiver(property_changed_adapter,
+				bus_name="org.neard",
+				dbus_interface="org.neard.Adapter",
+				signal_name = "PropertyChanged",
+				path_keyword="path")
+
+	os.system('python start-poll nfc0')
+	mainloop = gobject.MainLoop()
+	print('Please place an NFC tag near the reader...')
+	mainloop.run()

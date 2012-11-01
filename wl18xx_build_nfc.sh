@@ -115,7 +115,7 @@ function neard()
 	  install -c -m 755 test/* ${ROOTFS}/usr/share/nfc-test-scripts/ || exit 1
 	  mkdir -p ${ROOTFS}/etc/init.d || exit 1
 	  mkdir -p ${ROOTFS}/etc/rc5.d || exit 1
-	  install -c -m 755 ${old_dir}/scripts/neard.sh ${ROOTFS}/etc/init.d/ || exit 1
+	  install -c -m 755 ${old_dir}/scripts/nfc/neard.sh ${ROOTFS}/etc/init.d/ || exit 1
 	  cd ${ROOTFS}/etc/init.d/ || exit 1
 	  ln -s -f ../init.d/neard.sh ../rc5.d/S91neard || exit 1
 	  add_fingerprint 1
@@ -192,19 +192,18 @@ function libnl()
 function nfc-demo-scripts
 {
 	cd ${WORK_SPACE} || exit 1
-	COMPONENT_NAME="nfc-demo-scripts-2012-10-16.tar.gz"
+	COMPONENT_NAME="nfc-demo-scripts"
 	COMPONENT_DIR="nfc-demo-scripts"
 
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		tar xzvf ${old_dir}/scripts/${COMPONENT_NAME} || exit 1 
 		mkdir -p ${ROOTFS}/usr/share/nfc-test-scripts || exit 1
 
 		if [ x"$MACHINE_TYPE" = "x" ]; then
 			get_machine_used
 		fi
 
-		cp ${COMPONENT_DIR}/* ${ROOTFS}/usr/share/nfc-test-scripts || exit 1
+		cp ${old_dir}/scripts/nfc/nfc-demo-scripts/* ${ROOTFS}/usr/share/nfc-test-scripts || exit 1
 		add_fingerprint 1
 	fi
 	echo "nfc demo python scripts installed successfully"

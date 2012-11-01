@@ -1,0 +1,44 @@
+echo $1 $2 $3
+if [ "$(pidof wpa_supplicant)" ] 
+then
+	echo wpa_supplicant was found.
+else
+	echo starting wpa_supplicant...
+	wpa_supplicant -d -Dnl80211 -c/etc/wpa_supplicant.conf -iwlan0 -B > /dev/null
+fi
+wpa_cli -iwlan0 disconnect > /dev/null
+for i in `wpa_cli -iwlan0 list_networks | grep ^[0-9] | cut -f1`; do wpa_cli -iwlan0 remove_network $i > /dev/null; done
+wpa_cli -iwlan0 add_network > /dev/null
+wpa_cli -iwlan0 set_network 0 auth_alg OPEN > /dev/null
+if [ "$2" = "WPA" ] ; then
+	echo setting key managemant to WPA
+	wpa_cli -iwlan0 set_network 0 key_mgmt WPA-PSK > /dev/null
+        echo setting key to $3
+        wpa_cli -iwlan0 set_network 0 psk \""$3"\" > /dev/null
+fi
+if [ "$2" = "WPA2" ] ; then
+	echo setting key managemant to WPA2
+        wpa_cli -iwlan0 set_network 0 key_mgmt WPA-PSK > /dev/null
+	echo setting key to $3
+	wpa_cli -iwlan0 set_network 0 psk \""$3"\" > /dev/null
+	wpa_cli -iwlan0 set_network 0 proto RSN > /dev/null
+fi
+if [ "$2" = "WEP" ] ; then
+	echo setting key managemant to WEP
+        echo setting key to $3
+        wpa_cli -iwlan0 set_network 0 wep_key0 \""$3"\" > /dev/null
+	wpa_cli -iwlan0 set_network 0 key_mgmt NONE > /dev/null
+fi
+if [ "$2" = "NONE" ] ; then
+	echo connecting to none secured AP
+fi 
+wpa_cli -iwlan0 set_network 0 mode 0 > /dev/null
+echo setting SSID to $1
+wpa_cli -iwlan0 set_network 0 ssid \""$1"\" > /dev/null
+wpa_cli -iwlan0 select_network 0 > /dev/null
+wpa_cli -iwlan0 enable_network 0 > /dev/null
+wpa_cli -iwlan0 reassociate > /dev/null
+sleep 7
+iw wlan0 link
+udhcpc -i wlan0
+

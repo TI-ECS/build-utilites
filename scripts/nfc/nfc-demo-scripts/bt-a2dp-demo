@@ -1,0 +1,79 @@
+#!/bin/sh
+#/***************************************************************************
+# * \file    BT_A2DP_Demo.sh
+# ***************************************************************************/
+
+if [ "$(pidof bluetoothd)" ]
+then
+        echo bluetooth is up.
+else
+        echo starting bluetooth...
+        /usr/share/wl1271-demos/bluetooth/scripts/BT_Init.sh
+fi
+
+BDADDR_FILE=bd_addr.txt
+
+BD_ADDR=$1
+BD_KEY=$2
+WAV_FILE_NAME=$3
+GALLERY=/usr/share/wl1271-demos/bluetooth/gallery/
+
+echo $BD_ADDR > $BDADDR_FILE
+BD_ADDR_XX=`sed -e s/:/_/g $BDADDR_FILE`
+rm $BDADDR_FILE
+
+BT_ADAPTER=`dbus-send --system --print-reply --dest=org.bluez / \
+org.bluez.Manager.DefaultAdapter|awk '/object path/ {print $3}'`
+
+echo adapter is $BT_ADAPTER
+
+echo $BT_ADAPTER > $BDADDR_FILE
+BT_ADAPTER=`sed s/\"//g $BDADDR_FILE`
+rm $BDADDR_FILE
+
+echo "Pairing with $BD_ADDR, Please wait.."
+echo ""
+#dbus-send --system --print-reply --dest=org.bluez  $BT_ADAPTER org.bluez.Adapter
+#.RemoveDevice objpath:$BT_ADAPTER/dev_$BD_ADDR_XX &> /dev/null
+sleep 2
+agent 0000 "$BD_ADDR"
+if [ "$?" -ne 0 ]; then
+   sleep 2
+   dbus-send --system --print-reply --dest=org.bluez  $BT_ADAPTER org.bluez.Adap
+ter.RemoveDevice objpath:$BT_ADAPTER/dev_$BD_ADDR_XX &> /dev/null
+   sleep 2
+   dbus-send --system --print-reply --dest=org.bluez  $BT_ADAPTER org.bluez.Adap
+ter.CreateDevice string:$BD_ADDR &> /dev/null
+   dbus-send --system --print-reply --dest=org.bluez  $BT_ADAPTER/dev_$BD_ADDR_X
+X org.bluez.Device.DiscoverServices string: &> /dev/null
+   if [ "$?" -ne 0 ]; then
+        echo ""
+        echo "Pairing failure ..."
+   else
+        echo ""
+        echo "Pairing success ..."
+   fi
+else
+   echo ""
+   echo "Pairing success ..."
+fi
+
+echo "
+pcm.!bluetooth {
+    type bluetooth
+    device "$BD_ADDR"
+    }
+" > /etc/asound.conf
+
+echo "'/etc/asound.conf' got updated, ensure that we have paired with the device
+ $BD_ADDR for A2DP"
+
+FILE_WAV_PATH=$GALLERY
+
+ls $FILE_WAV_PATH/$WAV_FILE_NAME &> /dev/null
+if [ "$?" -ne 0 ]; then
+    aplay -Dplug:bluetooth $WAV_FILE_NAME > /dev/null > /dev/null &
+else
+    aplay -Dplug:bluetooth $FILE_WAV_PATH/$WAV_FILE_NAME > /dev/null > /dev/null
+fi
+
