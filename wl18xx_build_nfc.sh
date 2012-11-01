@@ -89,6 +89,9 @@ function nfc-modules()
 
 function neard()
 {
+	if  [ $# -eq 1 ]; then
+		START_MODULE="neard"
+	fi
 	# dependency section, in here we build the dependencies. We do not want to rebuild them each time
 	nfc-modules
 	dbus
@@ -125,6 +128,9 @@ function neard()
 
 function neardal()
 {
+	if  [ $# -eq 1 ]; then
+		START_MODULE="neardal"
+	fi
 	# dependency section, in here we build the dependencies. We do not want to rebuild them each time
 	neard
 	dbus-glib
@@ -141,8 +147,7 @@ function neardal()
 	  fi
 	  ./autogen.sh
 	  ./configure --host=arm-linux --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --libdir=${ROOTFS}${MY_PREFIX}/lib || exit 1
-	  make || exit 1
-#	  sudo ldconfig || exit 1
+	  make LIBS="-ldbus-glib"|| exit 1
 	  make install prefix=${ROOTFS} || exit 1
 	  add_fingerprint 1
 	fi
@@ -151,6 +156,12 @@ function neardal()
 
 function nfc-demo-app()
 {
+	if  [ $# -eq 1 ]; then
+		START_MODULE="nfc-demo-app.tar.gz"
+	fi
+	# dependency section, in here we build the dependencies. We do not want to rebuild them each time
+	neardal
+
 	cd ${WORK_SPACE} || exit 1
 	COMPONENT_NAME="nfc-demo-app.tar.gz"
 	COMPONENT_DIR="nfc-demo-app"
