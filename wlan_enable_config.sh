@@ -38,6 +38,17 @@ CONFIG_INPUT_UINPUT=y
 CONFIG_NET_SCHED=y
 CONFIG_NET_SCH_FIFO=y
 CONFIG_TI_ST=y
+CONFIG_BRIDGE_NETFILTER=y
+CONFIG_STP=y                         
+CONFIG_BRIDGE=y                      
+CONFIG_BRIDGE_IGMP_SNOOPING=y
+CONFIG_LLC=y 
+CONFIG_HAS_IOMEM=y                   
+CONFIG_HAS_IOPORT=y                  
+CONFIG_HAS_DMA=y                     
+CONFIG_NLATTR=y                      
+CONFIG_AVERAGE=y
+
 CONFIG
 `; do
 echo -n "Option $i: " 
