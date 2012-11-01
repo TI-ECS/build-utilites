@@ -9,7 +9,7 @@
 #
 
 BUILD_VERSION="r8"
-declare -A compat_bluetooth["r8"]="https://gforge.ti.com/gf/download/frsrelease/977/6265/ti-compat-nfc-2012-10-29.tar.gz"
+declare -A compat_bluetooth["r8"]="https://gforge.ti.com/gf/download/frsrelease/980/6272/compat-bluetooth-ol-r8.a5.01.tar.gz"
 
 source ./functions/common-functions
 function usage()
@@ -25,9 +25,7 @@ function usage()
 	echo "For example: \"./wl12xx_build_bt.sh bt-modules rebuild\""
 	echo
 	echo "Available components are:"
-	echo "bt-modules, expat, libffi, dbus, libIConv, zlib, gettext, glib, dbus-glib,"
-	echo "check, python, pygobject, dbus-python,bluez, hcidump, ncurses"
-	echo "readline, alsa-lib, openobex, libical, obexd, bt-obex, firmware, wl1271-demo, bt-enable"
+	echo "bt-modules, bluez, hcidump, obexd, bt-obex, firmware, wl1271-demo"
 	echo
 	echo "You may also build all components by typing: \"./wl12xx_build_bt.sh all build\""
 	echo
@@ -44,7 +42,7 @@ function usage()
 function all()
 {
 	get_machine_used
-	#bt-modules 1
+	bt-modules 1
 	uim 1
 	expat 1
 	libffi
@@ -55,9 +53,6 @@ function all()
 	gettext 1
 	dbus-glib 1
 	check 1
-	python 1
-	pygobject 1
-	dbus-python 1
 	bluez 1
 	hcidump 1
 	ncurses 1
@@ -87,14 +82,11 @@ function bt-modules()
 	fi
 
 	cd ${WORK_SPACE} || exit 1
-	COMPONENT_NAME=`basename ${compat_nfc[$BUILD_VERSION]}`
+	COMPONENT_NAME=`basename ${compat_bluetooth[$BUILD_VERSION]}`
 	COMPONENT_DIR="compat-bluetooth"
 	download_component "${compat_bluetooth[$BUILD_VERSION]}"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		[ ! -e Compat-patch-zip-v1.zip ] && { wget http://processors.wiki.ti.com/images/9/99/Compat-patch-zip-v1.zip || exit 1; }
-		unzip -o Compat-patch-zip-v1.zip || exit 1
-		#apply_patches
 		patch -p1 -i ${old_dir}/patches/0001-compat-wireless-usb-missing-macro.patch
 
 		./scripts/driver-select bt || exit 1
@@ -122,12 +114,12 @@ function bluez()
 	download_component "git://git.kernel.org/pub/scm/bluetooth/bluez.git"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		patch -p1 -i ${old_dir}patches/0001-bluez-define-_GNU_SOURCE-macro.patch
-		patch -p1 -i ${old_dir}patches/0002-bluez-define-macro-lacking-in-compiler.patch
-		patch -p1 -i ${old_dir}patches/0003-socket-enable-for-bluez-4_98.patch
-		patch -p1 -i ${old_dir}patches/0004-bluez-enable-source-interface.patch
-		patch -p1 -i ${old_dir}patches/0005-bluez-enable-gatt.patch
-		patch -p1 -i ${old_dir}patches/0006-bluez-fix-missing-include-directive.patch
+		patch -p1 -i ${old_dir}/patches/0001-bluez-define-_GNU_SOURCE-macro.patch
+		patch -p1 -i ${old_dir}/patches/0002-bluez-define-macro-lacking-in-compiler.patch
+		patch -p1 -i ${old_dir}/patches/0003-socket-enable-for-bluez-4_98.patch
+		patch -p1 -i ${old_dir}/patches/0004-bluez-enable-source-interface.patch
+		patch -p1 -i ${old_dir}/patches/0005-bluez-enable-gatt.patch
+		patch -p1 -i ${old_dir}/patches/0006-bluez-fix-missing-include-directive.patch
 
 		/usr/bin/libtoolize || exit 1
 		/usr/bin/aclocal || exit 1
@@ -135,7 +127,7 @@ function bluez()
 		/usr/bin/automake --add-missing || exit 1
 		/usr/bin/autoconf || exit 1
 
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-tools --enable-dund --enable-alsa --enable-test --enable-audio --enable-serial --enable-service --enable-hidd --enable-gstreamer --enable-usb --enable-tools --enable-bccmd --enable-hid2hci --enable-dfutool --enable-pand --disable-cups --enable-debug --enable-gatt --enable-hid2hci --enable-health
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-tools --enable-test --enable-audio --enable-serial --enable-service --enable-gstreamer --enable-usb --enable-tools --enable-bccmd --enable-hid2hci --enable-dfutool --enable-pand --disable-cups --enable-debug --enable-gatt --enable-hid2hci --enable-health
 		make LIBS='-lffi' || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
@@ -257,7 +249,6 @@ function obexd
 	fi
 	# dependency section, in here we build the dependencies. We do not want to rebuild them each time
 	bluez
-	openobex
 	libical
 	readline
 	ncurses
@@ -269,11 +260,12 @@ function obexd
 	download_component "git://git.kernel.org/pub/scm/bluetooth/obexd.git"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
+		/usr/bin/libtoolize || exit 1
+		/usr/bin/aclocal || exit 1
+		/usr/bin/autoheader || exit 1
+		/usr/bin/automake --add-missing || exit 1
+		/usr/bin/autoconf || exit 1
 		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} || exit 1
-		#wget http://processors.wiki.ti.com/images/2/22/Obexd-fix-UTF-conversions-1.tar.gz || exit 1
-		wget http://processors.wiki.ti.com/images/4/43/Obexd-patches_v1.tar.gz || exit 1
-		echo "Openning archive: Obexd-patches_v1.tar.gz" && tar -xzf Obexd-patches_v1.tar.gz || exit 1
-		#apply_patches
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		add_fingerprint 1
@@ -309,7 +301,7 @@ function bt-obex
 		/usr/bin/automake --add-missing || exit 1
 		/usr/bin/autoconf || exit 1
 		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} || exit 1
-		make LIBS="$LIBS -lncurses" || exit 1
+		make LIBS="$LIBS -lffi -lncurses" || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		add_fingerprint 1
 	fi
@@ -319,12 +311,12 @@ function bt-obex
 function wl1271-demo
 {
 	cd ${WORK_SPACE} || exit 1
-	COMPONENT_NAME="wl1271-bluetooth-2012-03-26.tar.gz"
+	COMPONENT_NAME="wl1271-bluetooth"
 	COMPONENT_DIR="wl1271-bluetooth"
-	download_component "https://gforge.ti.com/gf/download/frsrelease/827/5494/wl1271-bluetooth-2012-03-26.tar.gz"
+	COMPONENT_REV="df3aa62186c7026a17849aaae16f4c7d9dd70081"
+	download_component "git://github.com/TI-ECS/wl1271-bluetooth.git"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		#https://github.com/TI-ECS/wl1271-bluetooth/zipball/master
 		mkdir -p ${ROOTFS}/usr/share/wl1271-demos/bluetooth/gallery || exit 1
 		mkdir -p ${ROOTFS}/usr/share/wl1271-demos/bluetooth/scripts || exit 1
 		mkdir -p ${ROOTFS}/usr/share/wl1271-demos/bluetooth/ftp_folder || exit 1
@@ -394,7 +386,6 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
-BUILD_HOST=`echo $CROSS_COMPILE | sed s/-$//`
 
 if [ x"$ROOTFS" = "x" ]; then
 	echo "Please set ROOTFS variable to point to your root filesystem"

@@ -1,3 +1,4 @@
+BUILD_HOST=`echo $CROSS_COMPILE | sed s/-$//`
 function check()
 {
 	cd ${WORK_SPACE} || exit 1
@@ -134,7 +135,7 @@ function dbus()
 		add_fingerprint 0
 		echo "ac_cv_func_pipe2=no" > arm-linux.cache || exit 1
 		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --cache-file=arm-linux.cache --disable-inotify --without-x || exit 1
-		make V=1 LIBS="-lffi -lz" || exit 1
+		make LIBS="-lffi -lz" || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
 		echo "messagebus:x:102:105::${MY_LOCALSTATEDIR}/run/dbus:/bin/false" >> ${ROOTFS}${MY_SYSCONFDIR}/passwd || exit 1
