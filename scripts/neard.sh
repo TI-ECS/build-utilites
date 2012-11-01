@@ -9,7 +9,7 @@ case "$1" in
     echo -n "Starting neard nfc stack"
     modprobe nfcwilink
     start-stop-daemon --start --quiet --exec $neard &
-    /usr/share/nfc-demos/enable-adapter nfc0
+    /usr/share/nfc-test-scripts/enable-adapter nfc0
     echo "."
     ;;
   stop)
