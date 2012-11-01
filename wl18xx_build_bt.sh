@@ -57,7 +57,6 @@ function all()
 	hcidump 1
 	ncurses 1
 	readline 1
-	alsa-lib 1
 	openobex 1
 	libical 1
 	obexd 1
@@ -188,23 +187,6 @@ function readline
 }
 
 
-function alsa-lib
-{
-	cd ${WORK_SPACE} || exit 1
-	COMPONENT_NAME="alsa-lib-1.0.24.1.tar.gz"
-	COMPONENT_DIR="alsa-lib-1.0.25"
-	download_component "http://fossies.org/linux/misc/alsa-lib-1.0.24.1.tar.gz"
-	if [ ${CURRENT_OPTION} = "2" ]; then
-		add_fingerprint 0
-		./configure --prefix=${MY_PREFIX} --host=${BUILD_HOST} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
-		make || exit 1
-		make install DESTDIR=${ROOTFS} || exit 1
-		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
-		add_fingerprint 1
-	fi
-	echo "alsa-lib built successfully"
-}
-
 function openobex
 {
 	cd ${WORK_SPACE} || exit 1
@@ -301,7 +283,7 @@ function bt-obex
 		/usr/bin/automake --add-missing || exit 1
 		/usr/bin/autoconf || exit 1
 		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} || exit 1
-		make LIBS="$LIBS -lffi -lncurses" || exit 1
+		make LIBS="-ldbus-glib-1 -ldbus-1 -lgobject-2.0 -lglib-2.0 -liconv -lffi" || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		add_fingerprint 1
 	fi
