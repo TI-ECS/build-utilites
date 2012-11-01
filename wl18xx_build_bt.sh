@@ -192,7 +192,7 @@ function alsa-lib
 {
 	cd ${WORK_SPACE} || exit 1
 	COMPONENT_NAME="alsa-lib-1.0.24.1.tar.gz"
-	COMPONENT_DIR="alsa-lib-1.0.25"
+	COMPONENT_DIR="alsa-lib-1.0.26"
 	download_component "http://fossies.org/linux/misc/alsa-lib-1.0.24.1.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
