@@ -9,7 +9,6 @@ declare -A ti_utils_commit_id["r8"]="ol_r8.a4.05"
 declare -A hostap_download_target["r8"]="git://github.com/TI-OpenLink/hostap.git"
 declare -A hostap_commit_id["r8"]="ol_r8.a4.05"
 declare -A hostap_patches["r8"]=""
-declare -A conf_and_scripts["r8"]="https://gforge.ti.com/gf/download/frsrelease/910/5880/ecs-conf-files-and-scripts-2012-08-01.tar.gz"
 
 if [ ! -e setup-env ]
 then
@@ -20,6 +19,8 @@ source setup-env
 unset PKG_CONFIG_SYSROOT_DIR
 ME=$0
 components="libnl openssl iw hostap wpa_supplicant crda ti-utils wl18xx-firmware compat-wireless"
+
+old_dir=`pwd`
 
 function download ()
 {
@@ -627,27 +628,6 @@ function wpa_supplicant ()
 	cd $WORK_SPACE
 }
 
-function ecs_tools()
-{
-	stage=$1
-	 
-	if [ x"$stage" = x"download" -o x"$stage" = "xall" ]
-	then
-		if [ ! -d ${WORK_SPACE}/conf_and_scripts ]
-		then
-			echo "Downloading scripts and configuration files"
-			cd ${WORK_SPACE}
-			mkdir -p ${WORK_SPACE}/conf_and_scripts
-			file=`basename ${conf_and_scripts["$BUILD_VERSION"]}`
-			download ${conf_and_scripts["$BUILD_VERSION"]} $file
-			cd ${WORK_SPACE}/conf_and_scripts
-			tar xzf ${WORK_SPACE}/${file}
-			cd ${WORK_SPACE}
-		fi
-	fi
-	cd $WORK_SPACE
-}
-
 function wlconf ()
 {
 	stage=$1
@@ -671,8 +651,7 @@ function wlconf ()
 		for i in dictionary.txt struct.bin wl18xx-conf-default.bin README example.conf example.ini; do cp $i ${ROOTFS}/usr/sbin/wlconf/$i || exit 1; done
 		cp official_inis/* ${ROOTFS}/usr/sbin/wlconf/official_inis
 		mkdir -p ${ROOTFS}/home/root/scripts/wlconf
-		ecs_tools "download"
-		cp ${WORK_SPACE}/conf_and_scripts/scripts/wlconf/* ${ROOTFS}/home/root/scripts/wlconf
+		cp ${old_dir}/scripts/wlconf/* ${ROOTFS}/home/root/scripts/wlconf
 		chmod 755 ${ROOTFS}/home/root/scripts/wlconf/*
 	fi
 	cd $WORK_SPACE
@@ -1027,10 +1006,6 @@ case $package in
 				then
 					ti-utils "download"
 				fi
-				if [ ! -d ${WORK_SPACE}/conf_and_scripts ]
-				then
-					ecs_tools "download"
-				fi
 				;;
 			build)
 				if [ ! -d ${WORK_SPACE}/18xx-ti-utils ]
@@ -1047,10 +1022,6 @@ case $package in
 				if [ ! -e ${WORK_SPACE}/18xx-ti-utils/wlconf/wlconf ]
 				then
 					wlconf "build"
-				fi
-				if [ ! -d ${WORK_SPACE}/conf_and_scripts ]
-				then
-					ecs_tools "download"
 				fi
 				wlconf "install"
 				;;

@@ -20,7 +20,7 @@ export BUILD_VERSION="r8"
 # This is needed to build bluetooth components.
 # This parameter is not relevant for ti814x board.
 export MACHINE_TYPE="am335x"
-
+export BUILD_HOST="arm-linux"
 
 #===========================================================
 export ARCH="arm"
