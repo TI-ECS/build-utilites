@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #### R8-a4.05
-declare -A compat_download_target["r8"]="https://gforge.ti.com/gf/download/frsrelease/973/6259/ti_compat_wireless_wl18xx_R8_A4_05.tar.gz  https://gforge.ti.com/gf/download/frsrelease/974/6260/compat-wireless-patches-r8-a4-05.zip"
+declare -A compat_download_target["r8"]="https://gforge.ti.com/gf/download/frsrelease/979/6271/ti-compat-wireless-wl18xx-A4.05-Nov_01_2012.tar.gz  https://gforge.ti.com/gf/download/frsrelease/974/6260/compat-wireless-patches-r8-a4-05.zip"
 declare -A ti_utils_download_target["r8"]="git://github.com/TI-OpenLink/18xx-ti-utils.git"
 declare -A ti_utils_commit_id["r8"]="ol_r8.a4.05"
 declare -A wl18xx_fw_download_target["r8"]="git://github.com/TI-OpenLink/wl18xx_fw.git"
