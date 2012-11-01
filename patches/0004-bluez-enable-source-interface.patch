@@ -1,0 +1,31 @@
+From 87bcf52a6e9f2ec018bab9dd0da2a2b844b37108 Mon Sep 17 00:00:00 2001
+From: Moosa <moosab@ti.com>
+Date: Wed, 14 Mar 2012 16:43:57 +0200
+Subject: [PATCH] bluez: enable source interface
+
+Enable Source interface on D-Bus that can be used to access
+the Sink functionality
+
+Upstream-Status: Inappropriate [enable feature]
+
+Signed-off-by: Moosa Baransi <moosab@ti.com>
+---
+ audio/audio.conf |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/audio/audio.conf b/audio/audio.conf
+index 9533ada..b554936 100644
+--- a/audio/audio.conf
++++ b/audio/audio.conf
+@@ -3,7 +3,7 @@
+ # This section contains options which are not specific to any
+ # particular interface
+ [General]
+-Enable=Socket
++Enable=Socket,Source
+ 
+ # Switch to master role for incoming connections (defaults to true)
+ #Master=true
+-- 
+1.7.1
+

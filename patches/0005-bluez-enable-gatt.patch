@@ -1,0 +1,22 @@
+From 49ffdb67be763d92e4c103ebece9dd38605f50cf Mon Sep 17 00:00:00 2001
+From: Chen Ganir <chen.ganir@ti.com>
+Date: Tue, 30 Oct 2012 10:04:45 +0200
+Subject: [PATCH 2/3] enable gatt
+
+---
+ src/main.conf |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/main.conf b/src/main.conf
+index 787ef4f..dfe4471 100644
+--- a/src/main.conf
++++ b/src/main.conf
+@@ -61,4 +61,4 @@ NameResolving = true
+ DebugKeys = false
+ 
+ # Enable the GATT functionality. Default is false
+-EnableGatt = false
++EnableGatt = true
+-- 
+1.7.9.5
+
