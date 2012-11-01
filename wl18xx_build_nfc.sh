@@ -61,7 +61,7 @@ function all()
 	dbus-python 1
 	uim 1
 	nfc-demo-scripts 1
-	nfc-demo-app 1
+#	nfc-demo-app 1
 }
 
 
