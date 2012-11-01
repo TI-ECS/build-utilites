@@ -1,0 +1,32 @@
+From c95a7cfb60e8601a238d4568dc9f20699aa64a70 Mon Sep 17 00:00:00 2001
+From: Chen Ganir <chen.ganir@ti.com>
+Date: Tue, 30 Oct 2012 10:05:08 +0200
+Subject: [PATCH 3/3] fix missing include directive
+
+---
+ test/rctest.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/test/rctest.c b/test/rctest.c
+index ac341b0..4a306b5 100644
+--- a/test/rctest.c
++++ b/test/rctest.c
+@@ -38,6 +38,7 @@
+ #include <sys/time.h>
+ #include <sys/ioctl.h>
+ #include <sys/socket.h>
++#include <sys/stat.h>
+ 
+ #include <bluetooth/bluetooth.h>
+ #include <bluetooth/hci.h>
+@@ -45,7 +46,6 @@
+ #include <bluetooth/rfcomm.h>
+ #include <bluetooth/sdp.h>
+ #include <bluetooth/sdp_lib.h>
+-
+ /* Test modes */
+ enum {
+ 	SEND,
+-- 
+1.7.9.5
+

@@ -8,7 +8,10 @@
 # be built and installed on the target filesystem
 #
 
-source ./functions/python-functions
+BUILD_VERSION="r8"
+declare -A compat_bluetooth["r8"]="https://gforge.ti.com/gf/download/frsrelease/977/6265/ti-compat-nfc-2012-10-29.tar.gz"
+
+source ./functions/common-functions
 function usage()
 {
 	echo
@@ -84,14 +87,15 @@ function bt-modules()
 	fi
 
 	cd ${WORK_SPACE} || exit 1
-	COMPONENT_NAME="ti-compat-bluetooth-2012-02-20.tar.gz"
+	COMPONENT_NAME=`basename ${compat_nfc[$BUILD_VERSION]}`
 	COMPONENT_DIR="compat-bluetooth"
-	download_component "https://gforge.ti.com/gf/download/frsrelease/802/5435/ti-compat-bluetooth-2012-02-20.tar.gz"
+	download_component "${compat_bluetooth[$BUILD_VERSION]}"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
 		[ ! -e Compat-patch-zip-v1.zip ] && { wget http://processors.wiki.ti.com/images/9/99/Compat-patch-zip-v1.zip || exit 1; }
 		unzip -o Compat-patch-zip-v1.zip || exit 1
-		apply_patches
+		#apply_patches
+		patch -p1 -i ${old_dir}/patches/0001-compat-wireless-usb-missing-macro.patch
 
 		./scripts/driver-select bt || exit 1
 		make KLIB=${ROOTFS} "install-modules" || exit 1
@@ -113,18 +117,17 @@ function bluez()
 
 	cd ${WORK_SPACE} || exit 1
 	COMPONENT_NAME="bluez"
-	COMPONENT_REV="70a609bb3a7401b56377de77586e09a56d631468"
+	COMPONENT_REV="18a5dc6cdcf0828443c415eaea82b6834a8f9825"
 	COMPONENT_DIR="bluez"
 	download_component "git://git.kernel.org/pub/scm/bluetooth/bluez.git"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		#[ ! -e BlueZ_patches-v2.zip ] && { wget http://processors.wiki.ti.com/images/7/7e/BlueZ_patches-v2.zip || exit 1; }
-		#unzip -o BlueZ_patches-v2.zip || exit 1
-		#apply_patches
-		patch -p1 -i ${old_dir}/patches/0001-bluez-define-_GNU_SOURCE-macro.patch
-		patch -p1 -i ${old_dir}/patches/0001-socket-enable-for-bluez-4_98.patch 
-		patch -p1 -i ${old_dir}/patches/0002-bluez-enable-source-interface.patch
-		patch -p1 -i ${old_dir}/patches/0001-bluez-define-macro-lacking-in-compiler.patch
+		patch -p1 -i ${old_dir}patches/0001-bluez-define-_GNU_SOURCE-macro.patch
+		patch -p1 -i ${old_dir}patches/0002-bluez-define-macro-lacking-in-compiler.patch
+		patch -p1 -i ${old_dir}patches/0003-socket-enable-for-bluez-4_98.patch
+		patch -p1 -i ${old_dir}patches/0004-bluez-enable-source-interface.patch
+		patch -p1 -i ${old_dir}patches/0005-bluez-enable-gatt.patch
+		patch -p1 -i ${old_dir}patches/0006-bluez-fix-missing-include-directive.patch
 
 		/usr/bin/libtoolize || exit 1
 		/usr/bin/aclocal || exit 1
@@ -132,8 +135,8 @@ function bluez()
 		/usr/bin/automake --add-missing || exit 1
 		/usr/bin/autoconf || exit 1
 
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-tools --enable-dund --enable-alsa --enable-test --enable-audio --enable-serial --enable-service --enable-hidd --enable-gstreamer --enable-usb --enable-tools --enable-bccmd --enable-hid2hci --enable-dfutool --enable-pand --disable-cups
-		make || exit 1
+		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-tools --enable-dund --enable-alsa --enable-test --enable-audio --enable-serial --enable-service --enable-hidd --enable-gstreamer --enable-usb --enable-tools --enable-bccmd --enable-hid2hci --enable-dfutool --enable-pand --disable-cups --enable-debug --enable-gatt --enable-hid2hci --enable-health
+		make LIBS='-lffi' || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
 		cp audio/audio.conf profiles/input/input.conf ${ROOTFS}${MY_SYSCONFDIR}/bluetooth/ || exit 1

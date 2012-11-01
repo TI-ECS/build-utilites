@@ -49,6 +49,7 @@ function libIConv()
 	fi
 	echo "libIConv built successfully"
 }
+
 function zlib()
 {
 	cd ${WORK_SPACE} || exit 1

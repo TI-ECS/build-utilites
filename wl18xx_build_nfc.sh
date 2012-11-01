@@ -8,7 +8,7 @@
 # be built and installed on the target filesystem
 #
 BUILD_VERSION="r8"
-declare -A compat_nfc["r8"]="https://gforge.ti.com/gf/download/frsrelease/977/6263/ti-compat-nfc-2012-10-29.tar.gz"
+declare -A compat_nfc["r8"]="https://gforge.ti.com/gf/download/frsrelease/977/6265/ti-compat-nfc-2012-10-29.tar.gz"
 
 source ./functions/common-functions
 function usage()
