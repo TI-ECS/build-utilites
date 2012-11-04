@@ -32,6 +32,14 @@ def property_changed_adapter(name, value, path):
 	   if len(val) > 0:
 	   	os.system('python parse-tag-string %s' % val)
 		mainloop.quit()
+    elif name in ["Devices"]:
+	   val = extract_list(value)
+   	   print "Detected a P2P device %s" % (val)
+	   url = raw_input("Enter a URI to push to the P2P device-> ")
+	   if len(val) > 0:
+	   	os.system('python push-device %s URI %s' % (val,url) )
+   	        print "Your phone should now automatically browse to: %s" % (url)
+		mainloop.quit()
     else:
 	   val = str(value)
 
@@ -72,5 +80,5 @@ if __name__ == '__main__':
 
 	os.system('python start-poll nfc0')
 	mainloop = gobject.MainLoop()
-	print('Please place an NFC tag near the reader...')
+	print('Please place an NFC tag or device near the NFC antenna...')
 	mainloop.run()
