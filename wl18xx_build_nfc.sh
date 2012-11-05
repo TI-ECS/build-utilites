@@ -61,7 +61,7 @@ function all()
 	dbus-python 1
 	uim 1
 	nfc-demo-scripts 1
-#	nfc-demo-app 1
+	nfc-demo-app 1
 }
 
 
@@ -147,7 +147,7 @@ function neardal()
 	  fi
 	  ./autogen.sh
 	  ./configure --host=arm-linux --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --libdir=${ROOTFS}${MY_PREFIX}/lib || exit 1
-	  make LIBS="-ldbus-glib"|| exit 1
+	  make LIBS="-ldbus-glib-1"|| exit 1
 	  make install prefix=${ROOTFS} || exit 1
 	  add_fingerprint 1
 	fi
@@ -163,9 +163,9 @@ function nfc-demo-app()
 	neardal
 
 	cd ${WORK_SPACE} || exit 1
-	COMPONENT_NAME="nfc-demo-app.tar.gz"
+	COMPONENT_NAME="nfc-demo-app-2012-11-1.tar.gz"
 	COMPONENT_DIR="nfc-demo-app"
-	download_component "https://01.org/linux-nfc/sites/default/files/documentation/nfc-demo-app.tar.gz"
+	download_component "https://gforge.ti.com/gf/download/frsrelease/985/6284/nfc-demo-app-2012-11-1.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
           add_fingerprint 0
 	  if [ x"$MACHINE_TYPE" = "x" ]; then
@@ -173,7 +173,7 @@ function nfc-demo-app()
 	  fi
 	  ./autogen.sh
 	  ./configure --host=arm-linux --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --libdir=${ROOTFS}${MY_PREFIX}/lib || exit 1
-	  make || exit 1
+	  make  LIBS="-ldbus-1 -ldbus-glib-1 -lglib-2.0" || exit 1
 	  make install DESTDIR=${ROOTFS} || exit 1
 	  add_fingerprint 1
 	fi
