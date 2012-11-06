@@ -147,7 +147,7 @@ function neardal()
 	  fi
 	  ./autogen.sh
 	  ./configure --host=arm-linux --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --libdir=${ROOTFS}${MY_PREFIX}/lib || exit 1
-	  make LIBS="-ldbus-glib-1"|| exit 1
+	  make LIBS="-ldbus-glib-1 -lglib-2.0"|| exit 1
 	  make install prefix=${ROOTFS} || exit 1
 	  add_fingerprint 1
 	fi
@@ -173,7 +173,7 @@ function nfc-demo-app()
 	  fi
 	  ./autogen.sh
 	  ./configure --host=arm-linux --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --libdir=${ROOTFS}${MY_PREFIX}/lib || exit 1
-	  make  LIBS="-ldbus-1 -ldbus-glib-1 -lglib-2.0" || exit 1
+	  make  LIBS="-ldbus-1 -ldbus-glib-1 -lgio-2.0 -lgmodule-2.0 -lgobject-2.0 -lglib-2.0 -liconv -lffi -lz" || exit 1
 	  make install DESTDIR=${ROOTFS} || exit 1
 	  add_fingerprint 1
 	fi
