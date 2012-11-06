@@ -9,9 +9,8 @@
 #
 
 BUILD_VERSION="r8"
-declare -A compat_bluetooth["r8"]="https://gforge.ti.com/gf/download/frsrelease/980/6272/compat-bluetooth-ol-r8.a5.01.tar.gz"
+declare -A compat_bluetooth["r8"]="https://gforge.ti.com/gf/download/frsrelease/980/6282/compat-bluetooth-ol-r8.a5.01.tar.gz"
 
-source ./functions/common-functions
 function usage()
 {
 	echo
@@ -21,13 +20,13 @@ function usage()
 	echo "************************************"
 	echo
 	echo "This script compiles the BT modules components"
-	echo "The script can build each component as standalone by invoking: \"./wl12xx_build_bt.sh <module name> <build/rebuild>\""
+	echo "The script can build each component as standalone by invoking: \"./wl18xx_build_bt.sh <module name> <build/rebuild>\""
 	echo "For example: \"./wl12xx_build_bt.sh bt-modules rebuild\""
 	echo
 	echo "Available components are:"
 	echo "bt-modules, bluez, hcidump, obexd, bt-obex, firmware, wl1271-demo"
 	echo
-	echo "You may also build all components by typing: \"./wl12xx_build_bt.sh all build\""
+	echo "You may also build all components by typing: \"./wl18xx_build_bt.sh all build\""
 	echo
 	echo "Prerequisites"
 	echo "============="
@@ -53,6 +52,9 @@ function all()
 	gettext 1
 	dbus-glib 1
 	check 1
+	python 1
+	pygobject 1
+	dbus-python 1
 	bluez 1
 	hcidump 1
 	ncurses 1
@@ -63,7 +65,6 @@ function all()
 	bt-obex 1
 	firmware 1
 	wl1271-demo 1
-	#bt-enable 1
 }
 
 function apply_patches()
@@ -108,7 +109,8 @@ function bluez()
 
 	cd ${WORK_SPACE} || exit 1
 	COMPONENT_NAME="bluez"
-	COMPONENT_REV="18a5dc6cdcf0828443c415eaea82b6834a8f9825"
+	#COMPONENT_REV="18a5dc6cdcf0828443c415eaea82b6834a8f9825"
+	COMPONENT_REV="70a609bb3a7401b56377de77586e09a56d631468"
 	COMPONENT_DIR="bluez"
 	download_component "git://git.kernel.org/pub/scm/bluetooth/bluez.git"
 	if [ ${CURRENT_OPTION} = "2" ]; then
@@ -132,10 +134,19 @@ function bluez()
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
 		cp audio/audio.conf profiles/input/input.conf ${ROOTFS}${MY_SYSCONFDIR}/bluetooth/ || exit 1
 		cp test/agent ${ROOTFS}${MY_PREFIX}/bin/agent || exit 1
+		mkdir -p ${ROOTFS}/usr/share/bluetooth
+		list='simple-agent simple-agent test-device test-device test-discovery test-discovery test-manager test-manager test-profile test-profile'
+
+		cd test
+		for i in ${list}; do sed -i -e 's/GObject/gobject/' $i; done
+		list='list-devices simple-player simple-service test-adapter test-alert test-attrib test-audio test-device test-discovery test-health test-health-sink test-heartrate test-input test-manager test-nap test-network test-oob test-profile test-proximity test-sap-server test-service test-telephony test-textfile test-thermometer uuidtest rctest monitor-bluetooth mpris-player lmptest gaptest hciemu hsmicro hsplay hstest l2test attest avtest bdaddr btiotest'
+		echo "installing tests in ${ROOTFS}/usr/share/bluetooth"
+		cp ${list} ${ROOTFS}/usr/share/bluetooth
+		cd -
 		add_fingerprint 1
 	fi
 	echo "bluez built successfully"
-}
+} 
 
 function hcidump
 {
@@ -295,7 +306,7 @@ function wl1271-demo
 	cd ${WORK_SPACE} || exit 1
 	COMPONENT_NAME="wl1271-bluetooth"
 	COMPONENT_DIR="wl1271-bluetooth"
-	COMPONENT_REV="df3aa62186c7026a17849aaae16f4c7d9dd70081"
+	COMPONENT_REV="eb93a6f817bd4b89644e9b4b2583be6a1b1e4660"
 	download_component "git://github.com/TI-ECS/wl1271-bluetooth.git"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
@@ -350,6 +361,7 @@ old_dir=`pwd`
 MACHINE_TYPE=""
 
 source setup-env || exit 1
+source ./functions/common-functions
 # if there are no sufficient arguments...
 if  [ $# -lt 2 ]; then
 	usage
