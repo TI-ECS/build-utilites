@@ -307,7 +307,7 @@ function wl1271-demo
 	cd ${WORK_SPACE} || exit 1
 	COMPONENT_NAME="wl1271-bluetooth"
 	COMPONENT_DIR="wl1271-bluetooth"
-	COMPONENT_REV="eb93a6f817bd4b89644e9b4b2583be6a1b1e4660"
+	COMPONENT_REV="d11ff672addc4c9a9fc53194b8ed7fc240d51878"
 	download_component "git://github.com/TI-ECS/wl1271-bluetooth.git"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
@@ -323,6 +323,10 @@ function wl1271-demo
 		cp ./script/common/* ${ROOTFS}/usr/share/wl1271-demos/bluetooth/scripts || exit 1
 		cp ./script/${MACHINE_TYPE}/* ${ROOTFS}/usr/share/wl1271-demos/bluetooth/scripts || exit 1
 		cp ./ftp_folder/* ${ROOTFS}/usr/share/wl1271-demos/bluetooth/ftp_folder || exit 1
+		install -c -m 755 ./script/${MACHINE_TYPE}/BT_Init.sh ${ROOTFS}/etc/init.d/ || exit 1
+		cd ${ROOTFS}/etc/init.d || exit 1
+		ln -s -f ../init.d/BT_Init.sh ../rc5.d/S92btinit || exit 1
+		cd -
 		add_fingerprint 1
 	fi
 	echo "wl1271-demo built successfully"
