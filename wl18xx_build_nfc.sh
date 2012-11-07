@@ -147,7 +147,7 @@ function neardal()
 	  ./autogen.sh
 	  ./configure --host=arm-linux --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --libdir=${ROOTFS}${MY_PREFIX}/lib || exit 1
 	  make LIBS="-ldbus-glib-1 -lglib-2.0"|| exit 1
-	  make install prefix=${ROOTFS} || exit 1
+	  make install prefix=${ROOTFS}${MY_PREFIX} || exit 1
 	  add_fingerprint 1
 	fi
 	echo "neard application layer built successfully"
