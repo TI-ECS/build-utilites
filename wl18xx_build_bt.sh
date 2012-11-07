@@ -115,12 +115,13 @@ function bluez()
 	download_component "git://git.kernel.org/pub/scm/bluetooth/bluez.git"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		patch -p1 -i ${old_dir}/patches/0001-bluez-define-_GNU_SOURCE-macro.patch
-		patch -p1 -i ${old_dir}/patches/0002-bluez-define-macro-lacking-in-compiler.patch
-		patch -p1 -i ${old_dir}/patches/0003-socket-enable-for-bluez-4_98.patch
-		patch -p1 -i ${old_dir}/patches/0004-bluez-enable-source-interface.patch
-		patch -p1 -i ${old_dir}/patches/0005-bluez-enable-gatt.patch
-		patch -p1 -i ${old_dir}/patches/0006-bluez-fix-missing-include-directive.patch
+		patch -p1 -i ${old_dir}/patches/0001-bluez-define-_GNU_SOURCE-macro.patch || exit 1
+		patch -p1 -i ${old_dir}/patches/0002-bluez-define-macro-lacking-in-compiler.patch || exit 1
+		patch -p1 -i ${old_dir}/patches/0003-socket-enable-for-bluez-4_98.patch || exit 1
+		patch -p1 -i ${old_dir}/patches/0004-bluez-enable-source-interface.patch || exit 1
+		patch -p1 -i ${old_dir}/patches/0005-bluez-enable-gatt.patch || exit 1
+		patch -p1 -i ${old_dir}/patches/0006-bluez-fix-missing-include-directive.patch || exit 1
+		patch -p1 -i ${old_dir}/patches/0001-Enable-auto-reconnection.patch || exit 1
 
 		/usr/bin/libtoolize || exit 1
 		/usr/bin/aclocal || exit 1
@@ -135,11 +136,11 @@ function bluez()
 		cp audio/audio.conf profiles/input/input.conf ${ROOTFS}${MY_SYSCONFDIR}/bluetooth/ || exit 1
 		cp test/agent ${ROOTFS}${MY_PREFIX}/bin/agent || exit 1
 		mkdir -p ${ROOTFS}/usr/share/bluetooth
-		list='simple-agent simple-agent test-device test-device test-discovery test-discovery test-manager test-manager test-profile test-profile'
+		list='simple-agent test-device test-discovery test-manager test-profile'
 
 		cd test
-		for i in ${list}; do sed -i -e 's/GObject/gobject/' $i; done
-		list='list-devices simple-player simple-service test-adapter test-alert test-attrib test-audio test-device test-discovery test-health test-health-sink test-heartrate test-input test-manager test-nap test-network test-oob test-profile test-proximity test-sap-server test-service test-telephony test-textfile test-thermometer uuidtest rctest monitor-bluetooth mpris-player lmptest gaptest hciemu hsmicro hsplay hstest l2test attest avtest bdaddr btiotest'
+		for i in ${list}; do sed -i -e 's/from gi\.repository //' -e 's/GObject/gobject/' $i; done
+		list='simple-agent list-devices simple-player simple-service test-adapter test-alert test-attrib test-audio test-device test-discovery test-health test-health-sink test-heartrate test-input test-manager test-nap test-network test-oob test-profile test-proximity test-sap-server test-service test-telephony test-textfile test-thermometer uuidtest rctest monitor-bluetooth mpris-player lmptest gaptest hciemu hsmicro hsplay hstest l2test attest avtest bdaddr btiotest'
 		echo "installing tests in ${ROOTFS}/usr/share/bluetooth"
 		cp ${list} ${ROOTFS}/usr/share/bluetooth
 		cd -
@@ -294,7 +295,7 @@ function bt-obex
 		/usr/bin/automake --add-missing || exit 1
 		/usr/bin/autoconf || exit 1
 		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} || exit 1
-		make LIBS="-ldbus-glib-1 -ldbus-1 -lgobject-2.0 -lglib-2.0 -liconv -lffi" || exit 1
+		make LIBS="-ldbus-glib-1 -ldbus-1 -lgobject-2.0 -lglib-2.0 -liconv -lffi -lz -lncurses" || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		add_fingerprint 1
 	fi

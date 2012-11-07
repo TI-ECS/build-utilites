@@ -1,0 +1,55 @@
+From d621729a4659e42fe92f528c170797168e788183 Mon Sep 17 00:00:00 2001
+From: Chen Ganir <chen.ganir@ti.com>
+Date: Wed, 7 Nov 2012 10:33:21 +0200
+Subject: [PATCH] Enable auto-reconnection
+
+Enable auto-reconnection for proximity, heartrate and thermometer
+---
+ profiles/heartrate/heartrate.c     |    2 ++
+ profiles/proximity/monitor.c       |    2 ++
+ profiles/thermometer/thermometer.c |    3 +++
+ 3 files changed, 7 insertions(+)
+
+diff --git a/profiles/heartrate/heartrate.c b/profiles/heartrate/heartrate.c
+index f0eb7a4..01c254c 100644
+--- a/profiles/heartrate/heartrate.c
++++ b/profiles/heartrate/heartrate.c
+@@ -800,6 +800,8 @@ int heartrate_device_register(struct btd_device *device,
+ 	hr->attioid = btd_device_add_attio_callback(device, attio_connected_cb,
+ 						attio_disconnected_cb, hr);
+ 
++        device_set_auto_connect(device, TRUE);
++
+ 	return 0;
+ }
+ 
+diff --git a/profiles/proximity/monitor.c b/profiles/proximity/monitor.c
+index 1a14265..e45fa4a 100644
+--- a/profiles/proximity/monitor.c
++++ b/profiles/proximity/monitor.c
+@@ -652,6 +652,8 @@ int monitor_register(struct btd_device *device,
+ 							attio_disconnected_cb,
+ 							monitor);
+ 
++	device_set_auto_connect(device, TRUE);
++
+ 	return 0;
+ }
+ 
+diff --git a/profiles/thermometer/thermometer.c b/profiles/thermometer/thermometer.c
+index 4d1df1d..041e18f 100644
+--- a/profiles/thermometer/thermometer.c
++++ b/profiles/thermometer/thermometer.c
+@@ -1255,6 +1255,9 @@ int thermometer_register(struct btd_device *device, struct gatt_primary *tattr)
+ 
+ 	t->attioid = btd_device_add_attio_callback(device, attio_connected_cb,
+ 						attio_disconnected_cb, t);
++
++        device_set_auto_connect(device, TRUE);
++
+ 	return 0;
+ }
+ 
+-- 
+1.7.9.5
+
