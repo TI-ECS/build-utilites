@@ -48,6 +48,7 @@ CONFIG_HAS_IOPORT=y
 CONFIG_HAS_DMA=y                     
 CONFIG_NLATTR=y                      
 CONFIG_AVERAGE=y
+CONTIG_TI_ST=y
 
 CONFIG
 `; do
