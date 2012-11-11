@@ -1,0 +1,251 @@
+From a5b2ddf6c5f5abe7739d4d37193d9a7afe4a5acf Mon Sep 17 00:00:00 2001
+From: Chen Ganir <chen.ganir@ti.com>
+Date: Tue, 5 Jun 2012 16:21:00 +0300
+Subject: [PATCH] blueti: Add TI Logger dump
+
+Read HCI vendor events of TI chip logger, and dump to file.
+---
+ parser/parser.c |   15 +++++++++
+ parser/parser.h |    4 +++
+ src/hcidump.c   |   98 ++++++++++++++++++++++++++++++++++++++++---------------
+ 3 files changed, 91 insertions(+), 26 deletions(-)
+
+diff --git a/parser/parser.c b/parser/parser.c
+index 0f36ee7..fcf3ef0 100644
+--- a/parser/parser.c
++++ b/parser/parser.c
+@@ -317,6 +317,21 @@ void ext_dump(int level, struct frame *frm, int num)
+ 	}
+ }
+ 
++void tilogger_dump(int level, struct frame *frm)
++{
++	unsigned char *buf = frm->ptr;
++	int num = frm->len;
++	uint8_t type = buf[0];
++	uint8_t vendor = buf[1];
++	uint8_t siz = buf[2];
++	uint16_t opc = buf[3]+(buf[4]<<8);
++	uint8_t* dat = buf[5];
++
++	printf ("%2.2X %2.2X %2.2X %2.2X %2.2X \n",type, vendor, siz, opc, dat);
++
++}
++
++
+ void raw_ndump(int level, struct frame *frm, int num)
+ {
+ 	if (!frm->len)
+diff --git a/parser/parser.h b/parser/parser.h
+index 1130a5f..9ba3380 100644
+--- a/parser/parser.h
++++ b/parser/parser.h
+@@ -63,6 +63,7 @@ struct frame {
+ #define DUMP_BTSNOOP	0x1000
+ #define DUMP_PKTLOG	0x2000
+ #define DUMP_NOVENDOR	0x4000
++#define DUMP_TILOGGER	0x8000
+ #define DUMP_TYPE_MASK	(DUMP_ASCII | DUMP_HEX | DUMP_EXT)
+ 
+ /* Parser filter */
+@@ -225,6 +226,7 @@ void raw_ndump(int level, struct frame *frm, int num);
+ 
+ void lmp_dump(int level, struct frame *frm);
+ void hci_dump(int level, struct frame *frm);
++void tilogger_dump(int level, struct frame *frm);
+ void l2cap_dump(int level, struct frame *frm);
+ void rfcomm_dump(int level, struct frame *frm);
+ void sdp_dump(int level, struct frame *frm);
+@@ -253,6 +255,8 @@ static inline void parse(struct frame *frm)
+ 	p_indent(-1, NULL);
+ 	if (parser.flags & DUMP_RAW)
+ 		raw_dump(0, frm);
++	else if (parser.flags & DUMP_TILOGGER)
++		tilogger_dump(0,frm);
+ 	else
+ 		hci_dump(0, frm);
+ 	fflush(stdout);
+diff --git a/src/hcidump.c b/src/hcidump.c
+index 089d444..2a7e32a 100644
+--- a/src/hcidump.c
++++ b/src/hcidump.c
+@@ -110,6 +110,14 @@ struct pktlog_hdr {
+ } __attribute__ ((packed));
+ #define PKTLOG_HDR_SIZE (sizeof(struct pktlog_hdr))
+ 
++struct tilogger_pkt {
++	uint8_t type;
++	uint8_t vendor;
++	uint8_t size;
++	uint16_t opcode;
++	uint8_t	 data[0];	/* Packet Data */
++} __attribute__ ((packed));
++
+ static inline int read_n(int fd, char *buf, int len)
+ {
+ 	int t = 0, w;
+@@ -156,6 +164,7 @@ static int process_frames(int dev, int sock, int fd, unsigned long flags)
+ 	int nfds = 0;
+ 	char *buf, *ctrl;
+ 	int len, hdr_size = HCIDUMP_HDR_SIZE;
++	struct tilogger_pkt *tp;
+ 
+ 	if (sock < 0)
+ 		return -1;
+@@ -193,33 +202,35 @@ static int process_frames(int dev, int sock, int fd, unsigned long flags)
+ 	memset(&msg, 0, sizeof(msg));
+ 
+ 	if (mode == SERVER) {
+-		struct btsnoop_hdr *hdr = (void *) buf;
++		if (flags & DUMP_BTSNOOP) {
++			struct btsnoop_hdr *hdr = (void *) buf;
+ 
+-		btsnoop_version = 1;
+-		btsnoop_type = 1002;
++			btsnoop_version = 1;
++			btsnoop_type = 1002;
+ 
+-		memcpy(hdr->id, btsnoop_id, sizeof(btsnoop_id));
+-		hdr->version = htonl(btsnoop_version);
+-		hdr->type = htonl(btsnoop_type);
++			memcpy(hdr->id, btsnoop_id, sizeof(btsnoop_id));
++			hdr->version = htonl(btsnoop_version);
++			hdr->type = htonl(btsnoop_type);
+ 
+-		printf("btsnoop version: %d datalink type: %d\n",
+-						btsnoop_version, btsnoop_type);
++			printf("btsnoop version: %d datalink type: %d\n",
++							btsnoop_version, btsnoop_type);
+ 
+-		len = write(fd, buf, BTSNOOP_HDR_SIZE);
+-		if (len < 0) {
+-			perror("Can't create dump header");
+-			return -1;
+-		}
++			len = write(fd, buf, BTSNOOP_HDR_SIZE);
++			if (len < 0) {
++				perror("Can't create dump header");
++				return -1;
++			}
+ 
+-		if (len != BTSNOOP_HDR_SIZE) {
+-			fprintf(stderr, "Header size mismatch\n");
+-			return -1;
+-		}
++			if (len != BTSNOOP_HDR_SIZE) {
++				fprintf(stderr, "Header size mismatch\n");
++				return -1;
++			}
+ 
+-		fds[nfds].fd = fd;
+-		fds[nfds].events = POLLIN;
+-		fds[nfds].revents = 0;
+-		nfds++;
++			fds[nfds].fd = fd;
++			fds[nfds].events = POLLIN;
++			fds[nfds].revents = 0;
++			nfds++;
++		}
+ 	}
+ 
+ 	fds[nfds].fd = sock;
+@@ -312,13 +323,39 @@ static int process_frames(int dev, int sock, int fd, unsigned long flags)
+ 				if (pkt_type == HCI_COMMAND_PKT ||
+ 						pkt_type == HCI_EVENT_PKT)
+ 					dp->flags |= ntohl(0x02);
++			} else if (flags & DUMP_TILOGGER) {
++				tp = (void *)frm.ptr;
++				if (tp->type == HCI_EVENT_PKT && tp->vendor == 0xFF && tp->opcode == 0x0400) {
++					uint8_t* data=frm.ptr;
++					printf ("frm.len=%2.2X pkt_type=%2.2X vendor=%2.2X opcode=%2.2X size=%2.2X \n",frm.len, tp->type, tp->vendor, tp->opcode, tp->size);
++					for (i = 0;i<tp->size && i<10;i++) {
++						printf("%2.2X ", data[i]);
++					}
++					printf("\n");
++					if (flags & DUMP_HEX) {
++						unsigned char out[2];
++						int i;
++						for(i=0;i<tp->size-2;i++) {
++							sprintf(out,"%02X",tp->data[i]);
++							if (write_n(fd, out, 2) < 0) {
++								perror("Write error");
++								return -1;
++							}
++						}
++					} else { /* if no flags, dump raw */
++						if (write_n(fd, &tp->data[0], tp->size-2) < 0) {
++							perror("Write error");
++							return -1;
++						}
++					}
++				}
++				continue;
+ 			} else {
+ 				dh->len = htobs(frm.data_len);
+ 				dh->in  = frm.in;
+ 				dh->ts_sec  = htobl(frm.ts.tv_sec);
+ 				dh->ts_usec = htobl(frm.ts.tv_usec);
+ 			}
+-
+ 			if (write_n(fd, buf, frm.data_len + hdr_size) < 0) {
+ 				perror("Write error");
+ 				return -1;
+@@ -854,6 +891,7 @@ static void usage(void)
+ 	"  -a, --ascii                Dump data in ascii\n"
+ 	"  -x, --hex                  Dump data in hex\n"
+ 	"  -X, --ext                  Dump data in hex and ascii\n"
++	"  -T, --tilogger             Dump tilogger data\n"
+ 	"  -R, --raw                  Dump raw data\n"
+ 	"  -C, --cmtp=psm             PSM for CMTP\n"
+ 	"  -H, --hcrp=psm             PSM for HCRP\n"
+@@ -895,6 +933,7 @@ static struct option main_options[] = {
+ 	{ "nopermcheck",	0, 0, 'Z' },
+ 	{ "ipv4",		0, 0, '4' },
+ 	{ "ipv6",		0, 0, '6' },
++	{ "tilogger",   0, 0, 'T' },
+ 	{ "help",		0, 0, 'h' },
+ 	{ "version",		0, 0, 'v' },
+ 	{ 0 }
+@@ -911,7 +950,7 @@ int main(int argc, char *argv[])
+ 	uint16_t obex_port;
+ 
+ 	while ((opt = getopt_long(argc, argv,
+-				"i:l:p:m:w:r:d:taxXRC:H:O:P:S:D:A:YZ46hv",
++				"i:l:p:m:w:r:d:taxTXRC:H:O:P:S:D:A:YZ46hv",
+ 				main_options, NULL)) != -1) {
+ 		switch(opt) {
+ 		case 'i':
+@@ -968,6 +1007,10 @@ int main(int argc, char *argv[])
+ 			flags |= DUMP_RAW;
+ 			break;
+ 
++		case 'T':
++			flags |= DUMP_TILOGGER;
++			break;
++
+ 		case 'C': 
+ 			set_proto(0, atoi(optarg), 0, SDP_UUID_CMTP);
+ 			break;
+@@ -1060,13 +1103,16 @@ int main(int argc, char *argv[])
+ 		break;
+ 
+ 	case WRITE:
+-		flags |= DUMP_BTSNOOP;
++		if ((flags & DUMP_TILOGGER) == 0)
++			flags |= DUMP_BTSNOOP;
+ 		process_frames(device, open_socket(device, flags),
+-				open_file(dump_file, mode, flags), flags);
++		open_file(dump_file, mode, flags), flags);
+ 		break;
+ 
+ 	case SERVER:
+-		flags |= DUMP_BTSNOOP;
++		if ((flags & DUMP_TILOGGER) == 0)
++			flags |= DUMP_BTSNOOP;
++
+ 		init_parser(flags, filter, defpsm, defcompid, pppdump_fd, audio_fd);
+ 		run_server(device, dump_addr, dump_port, flags);
+ 		break;
+-- 
+1.7.9.5
+

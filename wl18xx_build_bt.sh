@@ -152,11 +152,13 @@ function bluez()
 function hcidump
 {
 	cd ${WORK_SPACE} || exit 1
-	COMPONENT_NAME="bluez-hcidump-2.2.tar.gz"
-	COMPONENT_DIR="bluez-hcidump-2.2"
-	download_component "http://pkgs.fedoraproject.org/repo/pkgs/bluez-hcidump/bluez-hcidump-2.2.tar.gz/3c298a8be67099fe227f3e4d9de539d5/bluez-hcidump-2.2.tar.gz"
+	COMPONENT_NAME="bluez-hcidump-2.4.tar.gz"
+	COMPONENT_DIR="bluez-hcidump-2.4"
+	#download_component "http://pkgs.fedoraproject.org/repo/pkgs/bluez-hcidump/bluez-hcidump-2.2.tar.gz/3c298a8be67099fe227f3e4d9de539d5/bluez-hcidump-2.2.tar.gz"
+	download_component "http://www.kernel.org/pub/linux/bluetooth/bluez-hcidump-2.4.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
+		patch -p1 -i ${old_dir}/patches/0001-blueti-Add-TI-Logger-dump.patch || exit 1
 		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} || exit 1
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
