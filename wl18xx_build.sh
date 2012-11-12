@@ -606,6 +606,8 @@ LIBS_p += -L$(LIBNL)/lib  -lssl -lcrypto -ldl
 # for p2p
 CONFIG_P2P=y
 CONFIG_AP=y
+# IEEE 802.11n (High Throughput) support
+CONFIG_IEEE80211N=y
 wpa_sup_defconfig
 }
 function wpa_supplicant ()
