@@ -9,7 +9,7 @@
 #
 
 BUILD_VERSION="r8"
-declare -A compat_bluetooth["r8"]="https://gforge.ti.com/gf/download/frsrelease/980/6282/compat-bluetooth-ol-r8.a5.01.tar.gz"
+declare -A compat_bluetooth["r8"]="https://gforge.ti.com/gf/download/frsrelease/990/6319/compat-bluetooth-ol-r8.a5.01_Nov_12_2012.tar.gz"
 
 function usage()
 {
@@ -90,6 +90,8 @@ function bt-modules()
 		patch -p1 -i ${old_dir}/patches/0001-compat-wireless-usb-missing-macro.patch
 
 		./scripts/driver-select bt || exit 1
+		make KLIB=${ROOTFS} bt || exit 1
+
 		make KLIB=${ROOTFS} "install-modules" || exit 1
 		add_fingerprint 1
 	fi
@@ -154,7 +156,6 @@ function hcidump
 	cd ${WORK_SPACE} || exit 1
 	COMPONENT_NAME="bluez-hcidump-2.4.tar.gz"
 	COMPONENT_DIR="bluez-hcidump-2.4"
-	#download_component "http://pkgs.fedoraproject.org/repo/pkgs/bluez-hcidump/bluez-hcidump-2.2.tar.gz/3c298a8be67099fe227f3e4d9de539d5/bluez-hcidump-2.2.tar.gz"
 	download_component "http://www.kernel.org/pub/linux/bluetooth/bluez-hcidump-2.4.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
@@ -241,7 +242,7 @@ function libical
 function obexd
 {
 	if  [ $# -eq 1 ]; then
-		START_MODULE="2281d4fac9fec97993b0a6dc0e2ec42911eac194"
+		START_MODULE="obexd"
 	fi
 	# dependency section, in here we build the dependencies. We do not want to rebuild them each time
 	bluez
@@ -262,8 +263,14 @@ function obexd
 		/usr/bin/automake --add-missing || exit 1
 		/usr/bin/autoconf || exit 1
 		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} || exit 1
+		patch -p1 -i ${old_dir}/patches/0001-obexd-ftp-and-opp-cancel-security.patch || exit 1
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
+		test -d ${ROOTFS}/usr/share/bluetooth || mkdir -p  ${ROOTFS}/usr/share/bluetooth
+		list='exchange-business-cards  ftp-client  get-capabilities  list-folders  map-client  opp-client  pbap-client'
+		for f in ${list}; do
+			install -c test/$f ${ROOTFS}/usr/share/bluetooth || exit 1
+		done
 		add_fingerprint 1
 	fi
 	echo "obexd built successfully"
@@ -272,7 +279,7 @@ function obexd
 function bt-obex
 {
 	if  [ $# -eq 1 ]; then
-		START_MODULE="171181b6ef6c94aefc828dc7fd8de136b9f97532"
+		START_MODULE="bluez-tools"
 	fi
 	# dependency section, in here we build the dependencies. We do not want to rebuild them each time
 	dbus-glib
@@ -290,6 +297,7 @@ function bt-obex
 		unzip -o Bt-obex-patches.zip || exit 1
 		apply_patches
 		patch -p1 -i ${old_dir}/patches/0001-bt-obex-new-dbus-api-for-obexd.patch
+		#patch -p1 -i ${old_dir}/patches/0001-manager-adoptation-to-new-manager-interface-of-bluez.patch
 
 		/usr/bin/libtoolize || exit 1
 		/usr/bin/aclocal || exit 1
@@ -306,10 +314,11 @@ function bt-obex
 
 function wl1271-demo
 {
+	START_MODULE="wl1271-bluetooth"
 	cd ${WORK_SPACE} || exit 1
 	COMPONENT_NAME="wl1271-bluetooth"
 	COMPONENT_DIR="wl1271-bluetooth"
-	COMPONENT_REV="d11ff672addc4c9a9fc53194b8ed7fc240d51878"
+	COMPONENT_REV="cb05b494e7ecce4a57e037f3dc0cd7733c15b3ee"
 	download_component "git://github.com/TI-ECS/wl1271-bluetooth.git"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
@@ -325,10 +334,10 @@ function wl1271-demo
 		cp ./script/common/* ${ROOTFS}/usr/share/wl1271-demos/bluetooth/scripts || exit 1
 		cp ./script/${MACHINE_TYPE}/* ${ROOTFS}/usr/share/wl1271-demos/bluetooth/scripts || exit 1
 		cp ./ftp_folder/* ${ROOTFS}/usr/share/wl1271-demos/bluetooth/ftp_folder || exit 1
-		install -c -m 755 ./script/${MACHINE_TYPE}/BT_Init.sh ${ROOTFS}/etc/init.d/ || exit 1
-		cd ${ROOTFS}/etc/init.d || exit 1
-		ln -s -f ../init.d/BT_Init.sh ../rc5.d/S92btinit || exit 1
-		cd -
+		#install -c -m 755 ./script/${MACHINE_TYPE}/BT_Init.sh ${ROOTFS}/etc/init.d/ || exit 1
+		#cd ${ROOTFS}/etc/init.d || exit 1
+		#ln -s -f ../init.d/BT_Init.sh ../rc5.d/S92btinit || exit 1
+		#cd -
 		add_fingerprint 1
 	fi
 	echo "wl1271-demo built successfully"

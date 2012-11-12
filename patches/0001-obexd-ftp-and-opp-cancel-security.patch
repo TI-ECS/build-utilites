@@ -1,0 +1,40 @@
+From c3ed238ea7767dd7b8c1e17ce8b3db987f282d7a Mon Sep 17 00:00:00 2001
+From: Vita Preskovsky <vitap@ti.com>
+Date: Sun, 11 Nov 2012 17:31:42 +0200
+Subject: [PATCH] obexd: ftp and opp cancel security
+
+---
+ plugins/ftp.c |    2 +-
+ plugins/opp.c |    3 ++-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/plugins/ftp.c b/plugins/ftp.c
+index ff4b761..1358b9f 100644
+--- a/plugins/ftp.c
++++ b/plugins/ftp.c
+@@ -521,7 +521,7 @@ static struct obex_service_driver ftp = {
+ 	.service = OBEX_FTP,
+ 	.channel = FTP_CHANNEL,
+ 	.port = OBEX_PORT_RANDOM,
+-	.secure = TRUE,
++	.secure = FALSE,
+ 	.record = FTP_RECORD,
+ 	.target = FTP_TARGET,
+ 	.target_size = TARGET_SIZE,
+diff --git a/plugins/opp.c b/plugins/opp.c
+index c7ddc63..4b5b8ab 100644
+--- a/plugins/opp.c
++++ b/plugins/opp.c
+@@ -228,7 +228,8 @@ static struct obex_service_driver driver = {
+ 	.get = opp_get,
+ 	.put = opp_put,
+ 	.chkput = opp_chkput,
+-	.reset = opp_reset
++	.reset = opp_reset,
++	.secure = FALSE
+ };
+ 
+ static int opp_init(void)
+-- 
+1.7.9.5
+
