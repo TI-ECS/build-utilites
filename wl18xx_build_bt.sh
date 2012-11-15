@@ -318,7 +318,7 @@ function wl1271-demo
 	cd ${WORK_SPACE} || exit 1
 	COMPONENT_NAME="wl1271-bluetooth"
 	COMPONENT_DIR="wl1271-bluetooth"
-	COMPONENT_REV="cb05b494e7ecce4a57e037f3dc0cd7733c15b3ee"
+	COMPONENT_REV="ae08318c7a66bb8e7dbdcfbe722178dfa78db943"
 	download_component "git://github.com/TI-ECS/wl1271-bluetooth.git"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
