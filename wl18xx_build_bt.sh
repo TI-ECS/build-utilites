@@ -50,6 +50,7 @@ function all()
 	libIConv 1
 	zlib 1
 	gettext 1
+	alsa-lib 1
 	dbus-glib 1
 	check 1
 	python 1
@@ -98,10 +99,27 @@ function bt-modules()
 	echo "bt-modules built successfully"
 }
 
+function alsa-lib
+{
+	cd ${WORK_SPACE} || exit 1
+	COMPONENT_NAME="alsa-lib-1.0.26.tar.gz"
+	COMPONENT_DIR="alsa-lib-1.0.26"
+	download_component "http://fossies.org/linux/misc/alsa-lib-1.0.26.tar.gz"
+	if [ ${CURRENT_OPTION} = "2" ]; then
+		add_fingerprint 0
+		./configure --prefix=${MY_PREFIX} --host=${BUILD_HOST} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --disable-python || exit 1
+		make || exit 1
+		make install DESTDIR=${ROOTFS} || exit 1
+		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
+		add_fingerprint 1
+	fi
+	echo "alsa-lib built successfully"
+}
+
 function bluez()
 {
 	if  [ $# -eq 1 ]; then
-		START_MODULE="bluez"
+		START_MODULE="bluez-4.98"
 	fi
 	# dependency section, in here we build the dependencies. We do not want to rebuild them each time
 	check
@@ -110,39 +128,25 @@ function bluez()
 	uim
 
 	cd ${WORK_SPACE} || exit 1
-	COMPONENT_NAME="bluez"
+	COMPONENT_NAME="bluez-4.98.tar.gz"
 	#COMPONENT_REV="18a5dc6cdcf0828443c415eaea82b6834a8f9825"
-	COMPONENT_REV="70a609bb3a7401b56377de77586e09a56d631468"
-	COMPONENT_DIR="bluez"
-	download_component "git://git.kernel.org/pub/scm/bluetooth/bluez.git"
+	COMPONENT_DIR="bluez-4.98"
+	download_component "http://kernel.org/pub/linux/bluetooth/bluez-4.98.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		patch -p1 -i ${old_dir}/patches/0001-bluez-define-_GNU_SOURCE-macro.patch || exit 1
-		patch -p1 -i ${old_dir}/patches/0002-bluez-define-macro-lacking-in-compiler.patch || exit 1
 		patch -p1 -i ${old_dir}/patches/0003-socket-enable-for-bluez-4_98.patch || exit 1
 		patch -p1 -i ${old_dir}/patches/0004-bluez-enable-source-interface.patch || exit 1
-		patch -p1 -i ${old_dir}/patches/0005-bluez-enable-gatt.patch || exit 1
-		patch -p1 -i ${old_dir}/patches/0006-bluez-fix-missing-include-directive.patch || exit 1
-		patch -p1 -i ${old_dir}/patches/0001-Enable-auto-reconnection.patch || exit 1
 
-		/usr/bin/libtoolize || exit 1
-		/usr/bin/aclocal || exit 1
-		/usr/bin/autoheader || exit 1
-		/usr/bin/automake --add-missing || exit 1
-		/usr/bin/autoconf || exit 1
-
-		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-tools --enable-test --enable-audio --enable-serial --enable-service --enable-gstreamer --enable-usb --enable-tools --enable-bccmd --enable-hid2hci --enable-dfutool --enable-pand --disable-cups --enable-debug --enable-gatt --enable-hid2hci --enable-health
+		LIBS='-liconv' ./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} --localstatedir=${MY_LOCALSTATEDIR} --enable-alsa --enable-tools --enable-test --enable-audio --enable-serial --enable-service --enable-gstreamer --enable-usb --enable-tools --enable-bccmd --enable-hid2hci --enable-dfutool --enable-pand --disable-cups --enable-debug --enable-gatt --enable-hid2hci --enable-health
 		make LIBS='-lffi' || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		rm `find ${ROOTFS}${MY_PREFIX}/lib/ -name '*.la'` >& /dev/null
-		cp audio/audio.conf profiles/input/input.conf ${ROOTFS}${MY_SYSCONFDIR}/bluetooth/ || exit 1
+		cp audio/audio.conf input/input.conf ${ROOTFS}${MY_SYSCONFDIR}/bluetooth/ || exit 1
 		cp test/agent ${ROOTFS}${MY_PREFIX}/bin/agent || exit 1
 		mkdir -p ${ROOTFS}/usr/share/bluetooth
-		list='simple-agent test-device test-discovery test-manager test-profile'
 
 		cd test
-		for i in ${list}; do sed -i -e 's/from gi\.repository //' -e 's/GObject/gobject/' $i; done
-		list='simple-agent list-devices simple-player simple-service test-adapter test-alert test-attrib test-audio test-device test-discovery test-health test-health-sink test-heartrate test-input test-manager test-nap test-network test-oob test-profile test-proximity test-sap-server test-service test-telephony test-textfile test-thermometer uuidtest rctest monitor-bluetooth mpris-player lmptest gaptest hciemu hsmicro hsplay hstest l2test attest avtest bdaddr btiotest'
+		list='simple-agent list-devices simple-service test-adapter test-attrib test-audio test-device test-discovery test-health test-health-sink test-input test-manager test-network test-oob test-proximity test-sap-server test-service test-telephony test-textfile test-thermometer uuidtest rctest monitor-bluetooth mpris-player lmptest gaptest hciemu hsmicro hsplay hstest l2test attest avtest bdaddr btiotest'
 		echo "installing tests in ${ROOTFS}/usr/share/bluetooth"
 		cp ${list} ${ROOTFS}/usr/share/bluetooth
 		cd -
@@ -242,7 +246,7 @@ function libical
 function obexd
 {
 	if  [ $# -eq 1 ]; then
-		START_MODULE="obexd"
+		START_MODULE="obexd-0.34.tar.gz"
 	fi
 	# dependency section, in here we build the dependencies. We do not want to rebuild them each time
 	bluez
@@ -251,23 +255,19 @@ function obexd
 	ncurses
 
 	cd ${WORK_SPACE} || exit 1
-	COMPONENT_NAME="obexd"
-	COMPONENT_REV="2281d4fac9fec97993b0a6dc0e2ec42911eac194"
-	COMPONENT_DIR="obexd"
-	download_component "git://git.kernel.org/pub/scm/bluetooth/obexd.git"
+	COMPONENT_NAME="obexd-0.34.tar.gz"
+	COMPONENT_DIR="obexd-0.34"
+	download_component "http://www.kernel.org/pub/linux/bluetooth/obexd-0.34.tar.gz"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
-		/usr/bin/libtoolize || exit 1
-		/usr/bin/aclocal || exit 1
-		/usr/bin/autoheader || exit 1
-		/usr/bin/automake --add-missing || exit 1
-		/usr/bin/autoconf || exit 1
 		./configure --host=${BUILD_HOST} --prefix=${MY_PREFIX} --sysconfdir=${MY_SYSCONFDIR} || exit 1
-		patch -p1 -i ${old_dir}/patches/0001-obexd-ftp-and-opp-cancel-security.patch || exit 1
+		wget http://processors.wiki.ti.com/images/4/43/Obexd-patches_v1.tar.gz || exit 1
+		echo "Openning archive: Obexd-patches_v1.tar.gz" && tar -xzf Obexd-patches_v1.tar.gz || exit 1
+		apply_patches
 		make || exit 1
 		make install DESTDIR=${ROOTFS} || exit 1
 		test -d ${ROOTFS}/usr/share/bluetooth || mkdir -p  ${ROOTFS}/usr/share/bluetooth
-		list='exchange-business-cards  ftp-client  get-capabilities  list-folders  map-client  opp-client  pbap-client'
+		list='exchange-business-cards  ftp-client  list-folders  pbap-client send-files'
 		for f in ${list}; do
 			install -c test/$f ${ROOTFS}/usr/share/bluetooth || exit 1
 		done
@@ -296,7 +296,7 @@ function bt-obex
 		[ ! -e Bt-obex-patches.zip ] && { wget 'http://processors.wiki.ti.com/images/f/f5/Bt-obex-patches.zip' || exit 1; }
 		unzip -o Bt-obex-patches.zip || exit 1
 		apply_patches
-		patch -p1 -i ${old_dir}/patches/0001-bt-obex-new-dbus-api-for-obexd.patch
+		#patch -p1 -i ${old_dir}/patches/0001-bt-obex-new-dbus-api-for-obexd.patch
 		#patch -p1 -i ${old_dir}/patches/0001-manager-adoptation-to-new-manager-interface-of-bluez.patch
 
 		/usr/bin/libtoolize || exit 1
@@ -318,7 +318,7 @@ function wl1271-demo
 	cd ${WORK_SPACE} || exit 1
 	COMPONENT_NAME="wl1271-bluetooth"
 	COMPONENT_DIR="wl1271-bluetooth"
-	COMPONENT_REV="ae08318c7a66bb8e7dbdcfbe722178dfa78db943"
+	COMPONENT_REV="ae9a9a961dd9821d30a0b9c32612f3a552c81d4e"
 	download_component "git://github.com/TI-ECS/wl1271-bluetooth.git"
 	if [ ${CURRENT_OPTION} = "2" ]; then
 		add_fingerprint 0
@@ -334,10 +334,6 @@ function wl1271-demo
 		cp ./script/common/* ${ROOTFS}/usr/share/wl1271-demos/bluetooth/scripts || exit 1
 		cp ./script/${MACHINE_TYPE}/* ${ROOTFS}/usr/share/wl1271-demos/bluetooth/scripts || exit 1
 		cp ./ftp_folder/* ${ROOTFS}/usr/share/wl1271-demos/bluetooth/ftp_folder || exit 1
-		#install -c -m 755 ./script/${MACHINE_TYPE}/BT_Init.sh ${ROOTFS}/etc/init.d/ || exit 1
-		#cd ${ROOTFS}/etc/init.d || exit 1
-		#ln -s -f ../init.d/BT_Init.sh ../rc5.d/S92btinit || exit 1
-		#cd -
 		add_fingerprint 1
 	fi
 	echo "wl1271-demo built successfully"
