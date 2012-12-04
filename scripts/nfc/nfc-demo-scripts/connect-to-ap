@@ -31,6 +31,7 @@ if [ "$2" = "WEP" ] ; then
 fi
 if [ "$2" = "NONE" ] ; then
 	echo connecting to none secured AP
+        wpa_cli -iwlan0 set_network 0 key_mgmt NONE
 fi 
 wpa_cli -iwlan0 set_network 0 mode 0 > /dev/null
 echo setting SSID to $1
