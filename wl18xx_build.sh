@@ -625,7 +625,7 @@ function wpa_supplicant ()
 		cd ${WORK_SPACE}/hostap/wpa_supplicant
 		make install || exit 1
 		for i in wpa_supplicant wpa_cli wpa_passphrase; do cp $i ${ROOTFS}/usr/sbin//$i || exit 1; done
-		cp wpa_supplicant.conf ${ROOTFS}/etc/ 
+		cp ${old_dir}/scripts/wpa_supplicant/wpa_supplicant.conf ${ROOTFS}/etc/ 
 	fi
 	cd $WORK_SPACE
 }
