@@ -1,14 +1,25 @@
 #!/bin/bash
 
-#### R8-a4.05
-declare -A compat_download_target["r8"]="https://gforge.ti.com/gf/download/frsrelease/979/6271/ti-compat-wireless-wl18xx-A4.05-Nov_01_2012.tar.gz  https://gforge.ti.com/gf/download/frsrelease/974/6260/compat-wireless-patches-r8-a4-05.zip"
-declare -A ti_utils_download_target["r8"]="git://github.com/TI-OpenLink/18xx-ti-utils.git"
-declare -A ti_utils_commit_id["r8"]="ol_r8.a4.05"
-declare -A wl18xx_fw_download_target["r8"]="git://github.com/TI-OpenLink/wl18xx_fw.git"
-declare -A ti_utils_commit_id["r8"]="ol_r8.a4.05"
-declare -A hostap_download_target["r8"]="git://github.com/TI-OpenLink/hostap.git"
-declare -A hostap_commit_id["r8"]="ol_r8.a4.05"
-declare -A hostap_patches["r8"]=""
+declare -A wl18xx_download_target="git://github.com/TI-OpenLink/wl18xx.git"
+declare -A wl18xx_tag="ol_r8.a5.13"
+
+declare -A compatwireless_download_target="git://github.com/TI-OpenLink/compat-wireless.git"
+declare -A compat_wireless_tag="3ec9ecca2cb07584e115ba53117f0084fc8faa25"
+
+declare -A compat_download_target="git://github.com/TI-OpenLink/compat.git"
+declare -A compat_tag="ol_r8.a5.13"
+
+declare -A ti_utils_download_target="git://github.com/TI-OpenLink/18xx-ti-utils.git"
+declare -A ti_utils_tag="ol_r8.a5.13"
+
+declare -A wl18xx_fw_download_target="git://github.com/TI-OpenLink/wl18xx_fw.git"
+declare -A wl18xx_fw_tag="ol_r8.a5.13"
+
+declare -A hostap_download_target="git://github.com/TI-OpenLink/hostap.git"
+declare -A hostap_tag="ol_r8.a5.13"
+
+declare -A iw_download_target="git://git.sipsolutions.net/iw.git"
+declare -A iw_tag="0a236ef5f8e4ba7218aac7d0cdacf45673d5b35c"
 
 if [ ! -e setup-env ]
 then
@@ -16,6 +27,10 @@ then
 	exit 1
 fi
 source setup-env
+
+export GIT_TREE=${WORK_SPACE}/wl18xx
+export GIT_COMPAT_TREE=${WORK_SPACE}/compat
+
 unset PKG_CONFIG_SYSROOT_DIR
 ME=$0
 components="libnl openssl iw hostap wpa_supplicant crda ti-utils wl18xx-firmware compat-wireless"
@@ -37,14 +52,23 @@ function download ()
 function git_clone ()
 {
 	file="$2"
-	[ -e ${WORK_SPACE}/${file} ] && echo "File $file alread exists. Skipping git clone." && return 0
+	if [ -e ${WORK_SPACE}/${file} ]
+	then
+		echo "File $file alread exists. Skipping git clone."
+		cd ${WORK_SPACE}/${file}
+		git fetch || exit 1
+		echo "git $file fetched."
+		return 0
+	fi
 	git clone "$1"
 	if [ $? -ne 0 ]
 	then
 		echo "Failed to download $2 git repository"
 		exit 1
 	fi
+	echo "git $file cloned."
 }
+
 function compat-wireless()
 {
 	stage=$1
@@ -52,41 +76,24 @@ function compat-wireless()
 	if [ x"$stage" = "xdownload"  -o x"$stage" = "xall" ]
 	then
 		cd ${WORK_SPACE}
-		for url in ${compat_download_target["$BUILD_VERSION"]}
-		do
-			file=`basename $url`
-			download $url $file
-			local EXT=${url/*./}
-			case $EXT in 
-				"gz")
-					[ ! -d ${WORK_SPACE}/compat-wireless ] && tar xzf $file
-					;;
-
-				"zip")
-					if [ ! -e ${WORK_SPACE}/compat-wireless/patches-${BUILD_VERSION}.done ]
-					then
-						echo "Applying patches"
-						cd ${WORK_SPACE}/compat-wireless || exit 1
-						mkdir tmp-patches
-						cd tmp-patches
-						unzip ${WORK_SPACE}/$file
-						local -a files=(*.patch)
-						cd -
-						for(( i=0; i<${#files[@]}; i++ ))
-						do
-							patch -p1 -i tmp-patches/${files[$i]} || exit 1;
-						done
-						res=`./scripts/driver-select wl18xx`
-						touch patches-${BUILD_VERSION}.done
-					fi
-					;;
-			esac
-		done
-		
+		git_clone ${wl18xx_download_target} wl18xx
+		cd ${WORK_SPACE}/wl18xx
+		git reset --hard ${wl18xx_tag} || exit 1
+		cd ${WORK_SPACE}
+		git_clone ${compat_download_target} compat
+		cd ${WORK_SPACE}/compat
+		git reset --hard ${compat_tag} || exit 1
+		cd ${WORK_SPACE}
+		git_clone ${compatwireless_download_target} compat-wireless
+		cd ${WORK_SPACE}/compat-wireless
+		git reset --hard ${compat_wireless_tag} || exit 1
 	fi
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
 		cd ${WORK_SPACE}/compat-wireless
+		./scripts/admin-update.sh
+		./scripts/driver-select wl18xx
+		patch -p1 -i ${old_dir}/patches/0001-wl12xx-additional-two-members-for-wl12xx_platform_da.patch || exit 1
 		make KLIB_BUILD=${KLIB_BUILD} KLIB=${ROOTFS} || exit 1
 	fi
 	if [ x"$stage" = "xinstall"  -o x"$stage" = "xall" ]
@@ -102,8 +109,8 @@ function compat-wireless()
 	if [ x"$stage" = "xclean" ]
 	then
 		cd $WORK_SPACE/compat-wireless
-		#make KLIB=${ROOTFS} uninstall
-		cd $WORK_SPACE && rm -rf compat-wireless
+		make KLIB_BUILD=${KLIB_BUILD} KLIB=${ROOTFS} clean || exit 1
+#		cd $WORK_SPACE && rm -rf compat-wireless
 	fi
 
 	cd $WORK_SPACE
@@ -145,9 +152,9 @@ function iw ()
 	stage=$1
 	if [ x"$stage" = "xdownload"  -o x"$stage" = "xall" ]
 	then
-		git_clone git://git.sipsolutions.net/iw.git iw
+		git_clone ${iw_download_target} iw
 		cd ${WORK_SPACE}/iw
-		git reset --hard 0a236ef5f8e4ba7218aac7d0cdacf45673d5b35c || exit 1
+		git reset --hard ${iw_tag} || exit 1
 	fi
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
@@ -210,10 +217,8 @@ function openssl ()
 		cd ${WORK_SPACE}
 		download "http://www.openssl.org/source/openssl-1.0.0d.tar.gz" "openssl-1.0.0d.tar.gz"
 		tar xzf openssl-1.0.0d.tar.gz
-		download http://processors.wiki.ti.com/images/e/ee/Openssl-1.0.0d-new-compilation-target-for-configure.zip Openssl-1.0.0d-new-compilation-target-for-configure.zip
 		cd ${WORK_SPACE}/openssl-1.0.0d
-		unzip ${WORK_SPACE}/Openssl-1.0.0d-new-compilation-target-for-configure.zip || exit 1
-		patch -p1 -i 0001-openssl-1.0.0d-new-target-os-for-configure.patch || exit 1
+		patch -p1 -i ${old_dir}/patches/0001-openssl-1.0.0d-new-target-os-for-configure.patch || exit 1
 		CROSS_COMPILE= perl ./Configure  shared --prefix=$ROOTFS/usr --openssldir=$ROOTFS/usr/lib/ssl linux-elf-arm
 	fi || exit 1
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
@@ -240,9 +245,9 @@ function ti-utils ()
 
 	if [ x"$stage" = x"download" -o x"$stage" = "xall" ]
 	then
-		git_clone "${ti_utils_download_target[$BUILD_VERSION]}" 18xx-ti-utils
+		git_clone "${ti_utils_download_target}" 18xx-ti-utils
 		cd ${WORK_SPACE}/18xx-ti-utils
-		git reset --hard "${ti_utils_commit_id[$BUILD_VERSION]}"
+		git reset --hard "${ti_utils_tag}" || exit 1
 	fi
 
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
@@ -281,20 +286,15 @@ function wl18xx-firmware()
 	 
 	if [ x"$stage" = x"download" -o x"$stage" = "xall" ]
 	then
-		git_clone "${wl18xx_fw_download_target[$BUILD_VERSION]}" wl18xx_fw
+		git_clone "${wl18xx_fw_download_target}" wl18xx_fw
 		cd ${WORK_SPACE}/wl18xx_fw
-		git reset --hard "${ti_utils_commit_id[$BUILD_VERSION]}"
+		git reset --hard "${wl18xx_fw_tag}"
 	fi
 
 	if [ x"$stage" = "xinstall" -o x"$stage" = "xall" ]
 	then
 		mkdir -p $ROOTFS/lib/firmware/ti-connectivity
-		case ${BUILD_VERSION} in
-			"r8")
-				cp ${WORK_SPACE}/wl18xx_fw/*.bin $ROOTFS/lib/firmware/ti-connectivity
-				;;
-		esac
-
+		cp ${WORK_SPACE}/wl18xx_fw/*.bin $ROOTFS/lib/firmware/ti-connectivity
 	fi
 	if [ x"$stage" = "xclean" ]
 	then
@@ -303,33 +303,6 @@ function wl18xx-firmware()
 	cd $WORK_SPACE
 }
 
-function hostap_patching ()
-{
-	local patch_dir
-	local filename=`basename ${hostap_patches[$BUILD_VERSION]}`
-
-	case ${BUILD_VERSION} in
-		"r8")
-			return
-			#patch_dir=patches-r5
-			;;
-	esac
-	[ -e ${WORK_SPACE}/hostap/$patch_dir/${patch_dir}.done ] && return
-	download  "${hostap_patches[$BUILD_VERSION]}" "${filename}"
-	mkdir $patch_dir
-	cd $patch_dir && unzip ../$filename && cd -
-	local files=($patch_dir/*.patch)
-	for (( i=0; i<${#files[@]};i++))
-	do 
-		patch -p1 -i "${files[$i]}"
-		if [ $? -ne 0 ]
-		then
-			echo "Patch $patch_dir/$i failed. Exiting..."
-			exit 1
-		fi
-	done
-	touch $patch_dir/$patch_dir.done
-}
 function make_hostapd_defconfig ()
 {
 	cat > .config <<"hostapd_defconfig"
@@ -505,10 +478,9 @@ function hostap()
 	if [ x"$stage" = x"download" -o x"$stage" = "xall" ]
 	then
 		cd ${WORK_SPACE}
-		git_clone "${hostap_download_target[$BUILD_VERSION]}" hostap
+		git_clone "${hostap_download_target}" hostap
 		cd ${WORK_SPACE}/hostap
-		git reset --hard "${hostap_commit_id[$BUILD_VERSION]}"
-		hostap_patching
+		git reset --hard "${hostap_tag}"
 	fi
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
@@ -534,7 +506,8 @@ function hostap()
 	cd $WORK_SPACE
 
 }
-function make_wpa_sup_defconfig ()
+
+function make_wpa_sup_defconfig()
 {
 	cat > .config <<"wpa_sup_defconfig"
 # Example wpa_supplicant build time configuration
@@ -661,7 +634,7 @@ function wlconf ()
 
 function usage ()
 {
-	echo "This script compiles one of following utilities: libnl, openssl, hostapd, wpa_supplicant,wl18xx_modules,firmware,crda,calibrator"
+	echo "This script compiles one of following utilities: libnl, openssl, hostapd, wpa_supplicant,wl18xx_modules,firmware,crda,calibrator,wlconf"
 	echo "by calling specific utility name and action."
 	echo "In case the options is 'all' all utilities will be downloaded and installed on root file system."
 	echo "File setup-env contains all required environment variables, for example:"
