@@ -1,0 +1,30 @@
+From 351a513dabfb55c3aab448613c2b10b7b5788d93 Mon Sep 17 00:00:00 2001
+From: Vita Preskovsky <vitap@ti.com>
+Date: Sun, 1 Jul 2012 11:49:30 +0300
+Subject: [PATCH] wl12xx: additional two members for wl12xx_platform_data
+
+  * Adding bt_enable_gpio and wlan_enable_gpio to wl12xx_platform_data.
+    This is needed in order to align this structure
+    with the one which is part of the linux kernel
+
+
+Signed-off-by: Vita Preskovsky <vitap@ti.com>
+---
+ include/linux/wl12xx.h |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/include/linux/wl12xx.h b/include/linux/wl12xx.h
+index 0d63731..535058e 100644
+--- a/include/linux/wl12xx.h
++++ b/include/linux/wl12xx.h
+@@ -54,6 +54,8 @@ struct wl12xx_platform_data {
+	int board_ref_clock;
+	int board_tcxo_clock;
+	unsigned long platform_quirks;
++	int bt_enable_gpio;
++	int wlan_enable_gpio;
+	bool pwr_in_suspend;
+
+	struct wl1271_if_operations *ops;
+--
+1.7.0.4

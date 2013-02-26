@@ -1,0 +1,28 @@
+From 43944030bd0396fa2a2d30921dfd03569aff31c5 Mon Sep 17 00:00:00 2001
+From: Vita Preskovsky <vitap@ti.com>
+Date: Mon, 5 Mar 2012 23:20:35 +0200
+Subject: [PATCH] openssl-1.0.0d: new target os for configure
+
+* linux-elf-arm target to configure
+
+
+Signed-off-by: Vita Preskovsky <vitap@ti.com>
+---
+ Configure |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/Configure b/Configure
+index 429ab2e..17fe31e 100755
+--- a/Configure
++++ b/Configure
+@@ -341,6 +341,7 @@ my %table=(
+ # It's believed that majority of ARM toolchains predefine appropriate -march.
+ # If you compiler does not, do complement config command line with one!
+ "linux-armv4",	"gcc:-DTERMIO -O3 -Wall::-D_REENTRANT::-ldl:BN_LLONG RC4_CHAR RC4_CHUNK DES_INT DES_UNROLL BF_PTR:${armv4_asm}:dlfcn:linux-shared:-fPIC::.so.\$(SHLIB_MAJOR).\$(SHLIB_MINOR)",
++"linux-elf-arm","$ENV{'CC'}:-DL_ENDIAN -DTERMIO -O3 -fomit-frame-pointer -Wall::-D_REENTRANT::-ldl:BN_LLONG DES_RISC1:${no_asm}:dlfcn:linux-shared:-fPIC::.so.\$(SHLIB_MAJOR).\$(SHLIB_MINOR)",
+ #### IA-32 targets...
+ "linux-ia32-icc",	"icc:-DL_ENDIAN -DTERMIO -O2 -no_cpprt::-D_REENTRANT::-ldl:BN_LLONG ${x86_gcc_des} ${x86_gcc_opts}:${x86_elf_asm}:dlfcn:linux-shared:-KPIC::.so.\$(SHLIB_MAJOR).\$(SHLIB_MINOR)",
+ "linux-elf",	"gcc:-DL_ENDIAN -DTERMIO -O3 -fomit-frame-pointer -Wall::-D_REENTRANT::-ldl:BN_LLONG ${x86_gcc_des} ${x86_gcc_opts}:${x86_elf_asm}:dlfcn:linux-shared:-fPIC::.so.\$(SHLIB_MAJOR).\$(SHLIB_MINOR)",
+-- 
+1.7.0.4
+
