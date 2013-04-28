@@ -1,14 +1,21 @@
-!/bin/bash
+#!/bin/bash
 
-BUILD_VERSION="r5"
-
+declare -A gen_tag="ol_R5.SP5.01"
 #### R5 SP3.05
-declare -A compat_download_target["r5"]="https://gforge.ti.com/gf/download/frsrelease/994/6330/ti-compat-wireless-R5_SP3.05.tar.gz  https://gforge.ti.com/gf/download/frsrelease/934/6105/Compat-wireless-patches-R5_SP3_build_10.zip"
-declare -A ti_utils_download_target["r5"]="git://github.com/TI-OpenLink/ti-utils.git"
-declare -A ti_utils_commit_id["r5"]="ol_R5.SP3.05"
-declare -A hostap_download_target["r5"]="git://github.com/TI-OpenLink/hostap.git"
-declare -A hostap_commit_id["r5"]="ol_R5.SP3.05"
-#declare -A hostap_patches["r5"]="http://processors.wiki.ti.com/images/3/3c/Hostapd-wpa-supplicant-patches-r5.zip"
+declare -A wl12xx_download_target="git://github.com/TI-OpenLink/wl12xx.git"
+declare -A wl12xx_tag=${gen_tag}
+declare -A compatwireless_download_target="git://github.com/TI-OpenLink/compat-wireless.git"
+declare -A compat_wireless_tag=${gen_tag}
+declare -A compat_download_target="git://github.com/TI-OpenLink/compat.git"
+declare -A compat_tag=${gen_tag}
+declare -A iw_download_target="git://git.sipsolutions.net/iw.git"
+declare -A iw_tag="0a236ef5f8e4ba7218aac7d0cdacf45673d5b35c"
+
+declare -A ti_utils_download_target="git://github.com/TI-OpenLink/ti-utils.git"
+declare -A ti_utils_commit_id=${gen_tag}
+declare -A hostap_download_target="git://github.com/TI-OpenLink/hostap.git"
+declare -A hostap_commit_id=${gen_tag}
+
 
 
 if [ ! -e setup-env ]
@@ -20,6 +27,10 @@ source setup-env
 unset PKG_CONFIG_SYSROOT_DIR
 ME=$0
 components="libnl openssl iw hostap wpa_supplicant crda ti-utils ti-utils-firmware compat-wireless"
+export GIT_TREE=${WORK_SPACE}/wl12xx
+export GIT_COMPAT_TREE=${WORK_SPACE}/compat
+
+old_dir=`pwd`
 
 function download ()
 {
@@ -36,14 +47,23 @@ function download ()
 function git_clone ()
 {
 	file="$2"
-	[ -e ${WORK_SPACE}/${file} ] && echo "File $file alread exists. Skipping git clone." && return 0
+	if [ -e ${WORK_SPACE}/${file} ]
+	then
+		echo "File $file alread exists. Skipping git clone."
+		cd ${WORK_SPACE}/${file}
+		git fetch || exit 1
+		echo "git $file fetched."
+		return 0
+	fi
 	git clone "$1"
 	if [ $? -ne 0 ]
 	then
 		echo "Failed to download $2 git repository"
 		exit 1
 	fi
+	echo "git $file cloned."
 }
+
 function compat-wireless()
 {
 	stage=$1
@@ -51,40 +71,25 @@ function compat-wireless()
 
 	if [ x"$stage" = "xdownload"  -o x"$stage" = "xall" ]
 	then
-		for url in ${compat_download_target["$BUILD_VERSION"]}
-		do
-			file=`basename $url`
-			download $url $file
-			local EXT=${url/*./}
-			case $EXT in 
-				"gz")
-					[ ! -d ${WORK_SPACE}/compat-wireless ] && tar xzf $file
-					;;
-				"zip")
-					if [ ! -e ${WORK_SPACE}/compat-wireless/patches-${BUILD_VERSION}.done ]
-					then
-						echo "Applying patches"
-						cd ${WORK_SPACE}/compat-wireless || exit 1
-						mkdir tmp-patches
-						cd tmp-patches
-						unzip ${WORK_SPACE}/$file
-						local -a files=(*.patch)
-						cd -
-						for(( i=0; i<${#files[@]}; i++ ))
-						do
-							patch -p1 -i tmp-patches/${files[$i]} || exit 1;
-						done
-                                                res=`./scripts/driver-select wl12xx`
-						touch patches-${BUILD_VERSION}.done
-					fi
-					;;
-			esac
-		done
-		
+                cd ${WORK_SPACE}
+                git_clone ${wl12xx_download_target} wl12xx
+                cd ${WORK_SPACE}/wl12xx
+                git reset --hard ${wl12xx_tag} || exit 1
+                cd ${WORK_SPACE}
+                git_clone ${compat_download_target} compat
+                cd ${WORK_SPACE}/compat
+                git reset --hard ${compat_tag} || exit 1
+                cd ${WORK_SPACE}
+                git_clone ${compatwireless_download_target} compat-wireless
+                cd ${WORK_SPACE}/compat-wireless
+                git reset --hard ${compat_wireless_tag} || exit 1
 	fi
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
 		cd ${WORK_SPACE}/compat-wireless
+                ./scripts/admin-update.sh
+                ./scripts/driver-select wl12xx
+                patch -p1 -i ${old_dir}/patches/0001-wl12xx-additional-two-members-for-wl12xx_platform_da.patch || exit 1
 		make KLIB_BUILD=${KLIB_BUILD} KLIB=${ROOTFS} || exit 1
 	fi
 	if [ x"$stage" = "xinstall"  -o x"$stage" = "xall" ]
@@ -108,9 +113,10 @@ function crda ()
 	if [ x"$stage" = "xdownload"  -o x"$stage" = "xall" ]
 	then
 		download "http://wireless.kernel.org/download/crda/crda-1.1.1.tar.bz2" "crda-1.1.1.tar.bz2"
+                download "http://linuxwireless.org/download/wireless-regdb/regulatory.bins/2011.04.28-regulatory.bin" "2011.04.28-regulatory.bin"
 		tar xjf crda-1.1.1.tar.bz2
 		cd ${WORK_SPACE}/crda-1.1.1
-		download http://linuxwireless.org/download/wireless-regdb/regulatory.bins/2011.04.28-regulatory.bin 2011.04.28-regulatory.bin
+		cp ${WORK_SPACE}/2011.04.28-regulatory.bin .
 	fi
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
@@ -138,9 +144,9 @@ function iw ()
 	stage=$1
 	if [ x"$stage" = "xdownload"  -o x"$stage" = "xall" ]
 	then
-		git_clone git://git.sipsolutions.net/iw.git iw
+		git_clone "${iw_download_target}" iw
 		cd ${WORK_SPACE}/iw
-		git reset --hard 0a236ef5f8e4ba7218aac7d0cdacf45673d5b35c || exit 1
+		git reset --hard ${iw_tag} || exit 1 
 	fi
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
@@ -233,9 +239,9 @@ function ti-utils ()
 
 	if [ x"$stage" = x"download" -o x"$stage" = "xall" ]
 	then
-		git_clone "${ti_utils_download_target[$BUILD_VERSION]}" ti-utils
+		git_clone "${ti_utils_download_target}" ti-utils
 		cd ${WORK_SPACE}/ti-utils
-                git reset --hard "${ti_utils_commit_id[$BUILD_VERSION]}"
+                git reset --hard "${ti_utils_commit_id}"
 	fi
 
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
@@ -270,19 +276,9 @@ function ti-utils-firmware()
 	if [ x"$stage" = "xinstall" -o x"$stage" = "xall" ]
 	then
 		mkdir -p $ROOTFS/lib/firmware/ti-connectivity
-		case ${BUILD_VERSION} in
-			"r4")
-				cp ${WORK_SPACE}/ti-utils/firmware/* $ROOTFS/lib/firmware/ti-connectivity
-				rm -f $ROOTFS/lib/firmware/ti-connectivity/Makefile
-				cp -r ${WORK_SPACE}/ti-utils/ini_files $ROOTFS/lib/firmware/ti-connectivity
-				;;
-			"r5")
-				cp ${WORK_SPACE}/ti-utils/hw/firmware/* $ROOTFS/lib/firmware/ti-connectivity
-				rm -f $ROOTFS/lib/hw/firmware/ti-connectivity/Makefile
-				cp -r ${WORK_SPACE}/ti-utils/hw/ini_files $ROOTFS/lib/firmware/ti-connectivity
-				;;
-		esac
-
+		cp ${WORK_SPACE}/ti-utils/hw/firmware/* $ROOTFS/lib/firmware/ti-connectivity
+		rm -f $ROOTFS/lib/hw/firmware/ti-connectivity/Makefile
+		cp -r ${WORK_SPACE}/ti-utils/hw/ini_files $ROOTFS/lib/firmware/ti-connectivity
 	fi
 	if [ x"$stage" = "xclean" ]
 	then
@@ -291,36 +287,6 @@ function ti-utils-firmware()
 	cd $WORK_SPACE
 }
 
-function hostap_patching ()
-{
-	local patch_dir
-	local filename=`basename ${hostap_patches[$BUILD_VERSION]}`
-
-	case ${BUILD_VERSION} in
-		"r4")
-			patch_dir=patches.83fa07226deb
-			;;
-		"r5")
-			return
-			#patch_dir=patches-r5
-			;;
-	esac
-	[ -e ${WORK_SPACE}/hostap/$patch_dir/${patch_dir}.done ] && return
-	download  "${hostap_patches[$BUILD_VERSION]}" "${filename}"
-	mkdir $patch_dir
-	cd $patch_dir && unzip ../$filename && cd -
-	local files=($patch_dir/*.patch)
-	for (( i=0; i<${#files[@]};i++))
-	do 
-		patch -p1 -i "${files[$i]}"
-		if [ $? -ne 0 ]
-		then
-			echo "Patch $patch_dir/$i failed. Exiting..."
-			exit 1
-		fi
-	done
-	touch $patch_dir/$patch_dir.done
-}
 function make_hostapd_defconfig ()
 {
 	cat > .config <<"hostapd_defconfig"
@@ -495,10 +461,9 @@ function hostap()
 	stage=$1
 	if [ x"$stage" = x"download" -o x"$stage" = "xall" ]
 	then
-		git_clone "${hostap_download_target[$BUILD_VERSION]}" hostap
+		git_clone "${hostap_download_target}" hostap
 		cd ${WORK_SPACE}/hostap
-		git reset --hard "${hostap_commit_id[$BUILD_VERSION]}"
-		hostap_patching
+		git reset --hard "${hostap_commit_id}"
 	fi
 	if [ x"$stage" = "xbuild" -o x"$stage" = "xall" ]
 	then
@@ -1081,15 +1046,25 @@ case $package in
 		esac
 		;;
 	all)
+		echo "bridge ***********************************************************************************"
 		bridge "all"
+		echo "libnl ***********************************************************************************"
 		libnl "all"
+		echo "openssl ***********************************************************************************"
 		openssl "all"
+		echo "iw ***********************************************************************************"
 		iw "all"
+		echo "hostap ***********************************************************************************"
 		hostap "all"
+		echo "wpa_supplicant ***********************************************************************************"
 		wpa_supplicant "all"
+		echo "crda ***********************************************************************************"
 		crda "all"
+		echo "ti-utils ***********************************************************************************"
 		ti-utils "all"
+		echo "ti-utils-firmware ***********************************************************************************"
 		ti-utils-firmware "all"
+		echo "compat-wireless ***********************************************************************************"
 		compat-wireless "all"
 		;;
 	clean-all)
