@@ -1,0 +1,61 @@
+From d61bb6117483493cc585e53583a3e0e460dffebd Mon Sep 17 00:00:00 2001
+From: Eliad Peller <eliad@wizery.com>
+Date: Thu, 3 Nov 2011 14:57:04 +0200
+Subject: [PATCH 05/14] wl18xx: set WIPHY_WOWLAN_ANY for IBI as well
+
+Allow configuring wowlan (and define the device as wakeup
+source) also when working with IBI.
+
+TODO: i guess this only works with async sdio, so fix it...
+
+Signed-off-by: Eliad Peller <eliad@wizery.com>
+---
+ drivers/net/wireless/ti/wlcore/main.c |   29 +++++++++++++++++------------
+ 1 file changed, 17 insertions(+), 12 deletions(-)
+
+diff --git a/drivers/net/wireless/ti/wlcore/main.c b/drivers/net/wireless/ti/wlcore/main.c
+index 6a71b9b..ffad5d3 100644
+--- a/drivers/net/wireless/ti/wlcore/main.c
++++ b/drivers/net/wireless/ti/wlcore/main.c
+@@ -6462,21 +6462,26 @@ int __devinit wlcore_probe(struct wl1271 *wl, struct platform_device *pdev)
+ 
+ #ifdef CONFIG_PM
+ 		ret = enable_irq_wake(wl->irq);
+-		if (!ret) {
++		if (!ret)
+ 			wl->irq_wake_enabled = true;
+-			device_init_wakeup(wl->dev, 1);
+-			if (pdata->pwr_in_suspend) {
+-				wl->hw->wiphy->wowlan.flags = WIPHY_WOWLAN_ANY;
+-				wl->hw->wiphy->wowlan.n_patterns =
+-					WL1271_MAX_RX_FILTERS;
+-				wl->hw->wiphy->wowlan.pattern_min_len = 1;
+-				wl->hw->wiphy->wowlan.pattern_max_len =
+-					WL1271_RX_FILTER_MAX_PATTERN_SIZE;
+-			}
+-
+-		}
+ #endif
+ 		disable_irq(wl->irq);
++	} else {
++		wl->irq_wake_enabled = true;
++	}
++ 
++	if (wl->irq_wake_enabled) {
++#ifdef CONFIG_PM
++		device_init_wakeup(wl->dev, 1);
++		if (pdata->pwr_in_suspend) {
++			wl->hw->wiphy->wowlan.flags = WIPHY_WOWLAN_ANY;
++			wl->hw->wiphy->wowlan.n_patterns =
++				WL1271_MAX_RX_FILTERS;
++			wl->hw->wiphy->wowlan.pattern_min_len = 1;
++			wl->hw->wiphy->wowlan.pattern_max_len =
++				WL1271_RX_FILTER_MAX_PATTERN_SIZE;
++		}
++#endif
+ 	}
+ 
+ 	ret = wl12xx_get_hw_info(wl);
+-- 
+1.7.9.5
+

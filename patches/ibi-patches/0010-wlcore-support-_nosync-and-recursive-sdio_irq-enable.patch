@@ -1,0 +1,212 @@
+From 27e961a09730908856c3b384de3faa9e10bb7d5d Mon Sep 17 00:00:00 2001
+From: Eliad Peller <eliad@wizery.com>
+Date: Mon, 6 Aug 2012 01:19:14 +0300
+Subject: [PATCH 10/14] wlcore: support _nosync and recursive sdio_irq
+ enable/disable
+
+this is very ugly, but so far seems to work.
+will need to rework it later...
+
+Signed-off-by: Eliad Peller <eliad@wizery.com>
+---
+ drivers/net/wireless/ti/wlcore/debugfs.c  |    1 +
+ drivers/net/wireless/ti/wlcore/io.c       |   29 ++++++++------
+ drivers/net/wireless/ti/wlcore/sdio.c     |   59 +++++++++++++++++++++++++----
+ drivers/net/wireless/ti/wlcore/wlcore.h   |    1 +
+ drivers/net/wireless/ti/wlcore/wlcore_i.h |    2 +
+ 5 files changed, 72 insertions(+), 20 deletions(-)
+
+diff --git a/drivers/net/wireless/ti/wlcore/debugfs.c b/drivers/net/wireless/ti/wlcore/debugfs.c
+index 8acf3b6..8d1a9a5 100644
+--- a/drivers/net/wireless/ti/wlcore/debugfs.c
++++ b/drivers/net/wireless/ti/wlcore/debugfs.c
+@@ -591,6 +591,7 @@ static ssize_t driver_state_read(struct file *file, char __user *user_buf,
+ 	DRIVER_STATE_PRINT_LHEX(ap_ps_map);
+ 	DRIVER_STATE_PRINT_HEX(quirks);
+ 	DRIVER_STATE_PRINT_HEX(irq);
++	DRIVER_STATE_PRINT_INT(ibi_enabled);
+ 	/* TODO: ref_clock and tcxo_clock were moved to wl12xx priv */
+ 	DRIVER_STATE_PRINT_HEX(hw_pg_ver);
+ 	DRIVER_STATE_PRINT_HEX(platform_quirks);
+diff --git a/drivers/net/wireless/ti/wlcore/io.c b/drivers/net/wireless/ti/wlcore/io.c
+index 93ccbff..2258b7e 100644
+--- a/drivers/net/wireless/ti/wlcore/io.c
++++ b/drivers/net/wireless/ti/wlcore/io.c
+@@ -55,13 +55,8 @@ EXPORT_SYMBOL_GPL(wlcore_disable_interrupts);
+ 
+ void wlcore_disable_interrupts_nosync(struct wl1271 *wl)
+ {
+-	/*
+-	 * TODO: This may deadlock when we cann free_inband_irq from the
+-	 * context of the interrupt handler
+-	 */
+ 	if (wl->inband_irq) {
+-		wl->if_ops->free_inband_irq(wl->dev);
+-		wl->inband_claimed = false;
++		wl->if_ops->disable_inband_irq(wl->dev);
+ 	} else {
+ 		disable_irq_nosync(wl->irq);
+ 	}
+@@ -73,12 +68,17 @@ void wlcore_enable_interrupts(struct wl1271 *wl)
+ 	int ret;
+ 
+ 	if (wl->inband_irq) {
+-		ret = wl->if_ops->request_inband_irq(wl->dev,
+-						     wl12xx_hardirq,
+-						     wlcore_irq,
+-						     wl);
+-		if (!ret)
+-			wl->inband_claimed = true;
++		/* TODO: add locking for ibi_enabled */
++		if (!wl->inband_claimed && !wl->ibi_enabled) {
++			ret = wl->if_ops->request_inband_irq(wl->dev,
++							     wl12xx_hardirq,
++							     wlcore_irq,
++							     wl);
++			if (!ret)
++				wl->inband_claimed = true;
++		} else {
++			wl->if_ops->enable_inband_irq(wl->dev);
++		}
+ 	} else {
+ 		enable_irq(wl->irq);
+ 	}
+@@ -87,6 +87,11 @@ EXPORT_SYMBOL_GPL(wlcore_enable_interrupts);
+ 
+ void wlcore_synchronize_interrupts(struct wl1271 *wl)
+ {
++	if (wl->inband_claimed) {
++		/* make sure to sync and free the sdio_irq */
++		wlcore_disable_interrupts(wl);
++		wlcore_enable_interrupts(wl);
++	}
+ 	synchronize_irq(wl->irq);
+ }
+ EXPORT_SYMBOL_GPL(wlcore_synchronize_interrupts);
+diff --git a/drivers/net/wireless/ti/wlcore/sdio.c b/drivers/net/wireless/ti/wlcore/sdio.c
+index a49dd40..689eb5a 100644
+--- a/drivers/net/wireless/ti/wlcore/sdio.c
++++ b/drivers/net/wireless/ti/wlcore/sdio.c
+@@ -278,19 +278,16 @@ int wl12xx_sdio_request_irq(struct device *child,
+ 	struct wl1271 *wl = platform_get_drvdata(glue->core);
+ 	int ret;
+ 
+-	/* irq is already claimed. we just need to enable it */
+-	if (wl->inband_claimed) {
+-		sdio_claim_host(func);
+-		sdio_enable_irq(func);
+-		sdio_release_host(func);
+-		return 0;
+-	}
++	printk("%s: ibi_enabled=%d\n", __func__, wl->ibi_enabled);
+ 
+ 	sdio_claim_host(func);
++	wl->ibi_enabled++;
++
+ 	glue->handler = handler;
+ 	glue->thread_fn = thread_fn;
+ 	glue->irq_cookie = cookie;
+ 	ret = sdio_claim_irq_lockless(func, wl12xx_sdio_interrupt);
++out:
+ 	sdio_release_host(func);
+ 	printk("claiming sdio irq (func=%d). ret=%d\n", func->num, ret);
+ 	return ret;
+@@ -300,9 +297,11 @@ static void wl12xx_sdio_free_irq(struct device *child)
+ {
+ 	struct wl12xx_sdio_glue *glue = dev_get_drvdata(child->parent);
+ 	struct sdio_func *func = dev_to_sdio_func(glue->dev);
++	struct wl1271 *wl = platform_get_drvdata(glue->core);
+ 
+-	printk("releasing sdio irq\n");
++	printk("releasing sdio irq ibi_enabled=%d\n", wl->ibi_enabled);
+ 	sdio_claim_host(func);
++	wl->ibi_enabled--;
+ 	sdio_release_irq(func);
+ 	glue->handler = NULL;
+ 	glue->thread_fn = NULL;
+@@ -310,6 +309,48 @@ static void wl12xx_sdio_free_irq(struct device *child)
+ 	sdio_release_host(func);
+ }
+ 
++static void wl12xx_sdio_disable_irq(struct device *child)
++{
++	struct wl12xx_sdio_glue *glue = dev_get_drvdata(child->parent);
++	struct sdio_func *func = dev_to_sdio_func(glue->dev);
++	struct wl1271 *wl = platform_get_drvdata(glue->core);
++
++	printk("disabling sdio irq ibi_enabled=%d\n", wl->ibi_enabled);
++
++	sdio_claim_host(func);
++
++	/* Allow multiple disables... */
++	wl->ibi_enabled--;
++	sdio_disable_irq(func);
++	sdio_release_host(func);
++}
++
++static void wl12xx_sdio_enable_irq(struct device *child)
++{
++	struct wl12xx_sdio_glue *glue = dev_get_drvdata(child->parent);
++	struct sdio_func *func = dev_to_sdio_func(glue->dev);
++	struct wl1271 *wl = platform_get_drvdata(glue->core);
++
++	printk("enabling sdio irq ibi_enabled=%d\n", wl->ibi_enabled);
++
++	sdio_claim_host(func);
++
++	WARN_ON(wl->ibi_enabled > 0);
++
++	if (wl->ibi_enabled < 0)
++		goto out;
++
++	/*
++	 * TODO: we might need to request_inband_irq here. this might
++	 * happen if ibi_enabled=-1, and then we get wl12xx_sdio_request_irq()
++	 * and only then wl12xx_sdio_enable_irq(). only WARN_ON for now.
++	 */
++	WARN_ON(!wl->inband_claimed);
++	sdio_enable_irq(func);
++out:
++	wl->ibi_enabled++;
++	sdio_release_host(func);
++}
+ 
+ static struct wl1271_if_operations sdio_ops = {
+ 	.read		= wl12xx_sdio_raw_read,
+@@ -318,6 +359,8 @@ static struct wl1271_if_operations sdio_ops = {
+ 	.set_block_size = wl1271_sdio_set_block_size,
+ 	.request_inband_irq	= wl12xx_sdio_request_irq,
+ 	.free_inband_irq	= wl12xx_sdio_free_irq,
++	.disable_inband_irq	= wl12xx_sdio_disable_irq,
++	.enable_inband_irq	= wl12xx_sdio_enable_irq,
+ };
+ 
+ static int __devinit wl1271_probe(struct sdio_func *func,
+diff --git a/drivers/net/wireless/ti/wlcore/wlcore.h b/drivers/net/wireless/ti/wlcore/wlcore.h
+index 524b9bf..d2681d4 100644
+--- a/drivers/net/wireless/ti/wlcore/wlcore.h
++++ b/drivers/net/wireless/ti/wlcore/wlcore.h
+@@ -180,6 +180,7 @@ struct wl1271 {
+ 	bool inband_irq;
+ 	bool inband_claimed;
+ 	int irq;
++	int ibi_enabled;
+ 
+ 	spinlock_t wl_lock;
+ 
+diff --git a/drivers/net/wireless/ti/wlcore/wlcore_i.h b/drivers/net/wireless/ti/wlcore/wlcore_i.h
+index 99bcfcf..b038786 100644
+--- a/drivers/net/wireless/ti/wlcore/wlcore_i.h
++++ b/drivers/net/wireless/ti/wlcore/wlcore_i.h
+@@ -224,6 +224,8 @@ struct wl1271_if_operations {
+ 				   irq_handler_t thread_fn,
+ 				   void *cookie);
+ 	void (*free_inband_irq)(struct device *child);
++	void (*disable_inband_irq)(struct device *child);
++	void (*enable_inband_irq)(struct device *child);
+ };
+ 
+ #define MAX_NUM_KEYS 14
+-- 
+1.7.9.5
+

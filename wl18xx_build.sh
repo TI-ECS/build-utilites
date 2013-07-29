@@ -94,6 +94,7 @@ function compat-wireless()
 		./scripts/admin-update.sh
 		./scripts/driver-select wl18xx
 		patch -p1 -i ${old_dir}/patches/0001-wl12xx-additional-two-members-for-wl12xx_platform_da.patch || exit 1
+		for i in ${old_dir}/patches/ibi-patches/*.patch; do patch -p1 -i $i; done || exit 1
 		make KLIB_BUILD=${KLIB_BUILD} KLIB=${ROOTFS} || exit 1
 	fi
 	if [ x"$stage" = "xinstall"  -o x"$stage" = "xall" ]

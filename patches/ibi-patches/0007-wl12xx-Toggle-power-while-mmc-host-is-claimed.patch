@@ -1,0 +1,63 @@
+From d999eefdbbbf0875d1f0db64692d94adbcd7a51d Mon Sep 17 00:00:00 2001
+From: Ido Yariv <ido@wizery.com>
+Date: Thu, 22 Dec 2011 12:12:15 +0200
+Subject: [PATCH 07/14] wl12xx: Toggle power while mmc host is claimed
+
+Currently mmc power is toggled without first claiming the host. This can
+be problematic, as the mmc disable/enable callbacks might be called
+concurrently.
+
+Fix this by claiming the host before toggling power.
+
+Signed-off-by: Ido Yariv <ido@wizery.com>
+Signed-off-by: Ido Reis <idor@ti.com>
+Signed-off-by: Eliad Peller <eliad@wizery.com>
+---
+ drivers/net/wireless/ti/wlcore/sdio.c |    7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/wireless/ti/wlcore/sdio.c b/drivers/net/wireless/ti/wlcore/sdio.c
+index 35960cd..343d303 100644
+--- a/drivers/net/wireless/ti/wlcore/sdio.c
++++ b/drivers/net/wireless/ti/wlcore/sdio.c
+@@ -157,6 +157,8 @@ static int wl12xx_sdio_power_on(struct wl12xx_sdio_glue *glue)
+ 	struct sdio_func *func = dev_to_sdio_func(glue->dev);
+ 	struct mmc_card *card = func->card;
+ 
++	sdio_claim_host(func);
++
+ 	ret = pm_runtime_get_sync(&card->dev);
+ 	if (ret) {
+ 		/*
+@@ -171,11 +173,10 @@ static int wl12xx_sdio_power_on(struct wl12xx_sdio_glue *glue)
+ 		}
+ 	}
+ 
+-	sdio_claim_host(func);
+ 	sdio_enable_func(func);
+-	sdio_release_host(func);
+ 
+ out:
++	sdio_release_host(func);
+ 	return ret;
+ }
+ 
+@@ -187,7 +188,6 @@ static int wl12xx_sdio_power_off(struct wl12xx_sdio_glue *glue)
+ 
+ 	sdio_claim_host(func);
+ 	sdio_disable_func(func);
+-	sdio_release_host(func);
+ 
+ 	/* Power off the card manually in case it wasn't powered off above */
+ 	ret = mmc_power_save_host(card->host);
+@@ -198,6 +198,7 @@ static int wl12xx_sdio_power_off(struct wl12xx_sdio_glue *glue)
+ 	pm_runtime_put_sync(&card->dev);
+ 
+ out:
++	sdio_release_host(func);
+ 	return ret;
+ }
+ 
+-- 
+1.7.9.5
+

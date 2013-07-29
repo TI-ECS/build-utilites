@@ -1,0 +1,328 @@
+From 1628db9f4b2898214e238681061465287fad45fb Mon Sep 17 00:00:00 2001
+From: Eliad Peller <eliad@wizery.com>
+Date: Mon, 29 Aug 2011 19:34:36 +0300
+Subject: [PATCH 01/14] wl12xx: Add support for inband interrupts
+
+TODO:
+* we seem to deadlock on unload.
+* clean? (export irq handlers instead of passing them?)
+
+Signed-off-by: Eliad Peller <eliad@wizery.com>
+---
+ drivers/net/wireless/ti/wlcore/io.c       |   22 +++++++--
+ drivers/net/wireless/ti/wlcore/main.c     |   75 ++++++++++++++++++-----------
+ drivers/net/wireless/ti/wlcore/sdio.c     |   55 +++++++++++++++++++++
+ drivers/net/wireless/ti/wlcore/wlcore.h   |    3 ++
+ drivers/net/wireless/ti/wlcore/wlcore_i.h |    6 +++
+ 5 files changed, 131 insertions(+), 30 deletions(-)
+
+diff --git a/drivers/net/wireless/ti/wlcore/io.c b/drivers/net/wireless/ti/wlcore/io.c
+index 68e74ee..b70c1f4 100644
+--- a/drivers/net/wireless/ti/wlcore/io.c
++++ b/drivers/net/wireless/ti/wlcore/io.c
+@@ -44,19 +44,35 @@ bool wl1271_set_block_size(struct wl1271 *wl)
+ 
+ void wlcore_disable_interrupts(struct wl1271 *wl)
+ {
+-	disable_irq(wl->irq);
++	if (wl->inband_irq)
++		wl->if_ops->free_inband_irq(wl->dev);
++	else
++		disable_irq(wl->irq);
+ }
+ EXPORT_SYMBOL_GPL(wlcore_disable_interrupts);
+ 
+ void wlcore_disable_interrupts_nosync(struct wl1271 *wl)
+ {
+-	disable_irq_nosync(wl->irq);
++	/*
++	 * TODO: This may deadlock when we cann free_inband_irq from the
++	 * context of the interrupt handler
++	 */
++	if (wl->inband_irq)
++		wl->if_ops->free_inband_irq(wl->dev);
++	else
++		disable_irq_nosync(wl->irq);
+ }
+ EXPORT_SYMBOL_GPL(wlcore_disable_interrupts_nosync);
+ 
+ void wlcore_enable_interrupts(struct wl1271 *wl)
+ {
+-	enable_irq(wl->irq);
++	if (wl->inband_irq)
++		wl->if_ops->request_inband_irq(wl->dev,
++					       wl12xx_hardirq,
++					       wlcore_irq,
++					       wl);
++	else
++		enable_irq(wl->irq);
+ }
+ EXPORT_SYMBOL_GPL(wlcore_enable_interrupts);
+ 
+diff --git a/drivers/net/wireless/ti/wlcore/main.c b/drivers/net/wireless/ti/wlcore/main.c
+index d6fd873..6a71b9b 100644
+--- a/drivers/net/wireless/ti/wlcore/main.c
++++ b/drivers/net/wireless/ti/wlcore/main.c
+@@ -60,6 +60,7 @@ static char *fwlog_param;
+ static int fwlog_mem_blocks = -1;
+ static int bug_on_recovery = -1;
+ static int no_recovery     = -1;
++static char *irq_param;
+ 
+ static void __wl1271_op_remove_interface(struct wl1271 *wl,
+ 					 struct ieee80211_vif *vif,
+@@ -661,7 +662,7 @@ out:
+ 	return ret;
+ }
+ 
+-static irqreturn_t wlcore_irq(int irq, void *cookie)
++irqreturn_t wlcore_irq(int irq, void *cookie)
+ {
+ 	int ret;
+ 	unsigned long flags;
+@@ -6373,7 +6374,7 @@ int wlcore_free_hw(struct wl1271 *wl)
+ }
+ EXPORT_SYMBOL_GPL(wlcore_free_hw);
+ 
+-static irqreturn_t wl12xx_hardirq(int irq, void *cookie)
++irqreturn_t wl12xx_hardirq(int irq, void *cookie)
+ {
+ 	struct wl1271 *wl = cookie;
+ 	unsigned long flags;
+@@ -6392,7 +6393,8 @@ static irqreturn_t wl12xx_hardirq(int irq, void *cookie)
+ 		/* don't enqueue a work right now. mark it as pending */
+ 		set_bit(WL1271_FLAG_PENDING_WORK, &wl->flags);
+ 		wl1271_debug(DEBUG_IRQ, "should not enqueue work");
+-		disable_irq_nosync(wl->irq);
++		if (!wl->inband_irq)
++			disable_irq_nosync(wl->irq);
+ 		pm_wakeup_event(wl->dev, 0);
+ #ifdef CONFIG_HAS_WAKELOCK
+ 		if (!test_and_set_bit(WL1271_FLAG_WAKE_LOCK, &wl->flags))
+@@ -6440,30 +6442,42 @@ int __devinit wlcore_probe(struct wl1271 *wl, struct platform_device *pdev)
+ 	else
+ 		irqflags = IRQF_TRIGGER_HIGH | IRQF_ONESHOT;
+ 
+-	ret = request_threaded_irq(wl->irq, wl12xx_hardirq, wlcore_irq,
+-				   irqflags,
+-				   pdev->name, wl);
+-	if (ret < 0) {
+-		wl1271_error("request_irq() failed: %d", ret);
+-		goto out;
+-	}
++	wl->inband_irq = false;
++	if (irq_param) {
++		if (!strcmp(irq_param, "sdio"))
++			wl->inband_irq = true;
++		else if (strcmp(irq_param, "gpio"))
++			wl1271_warning("Unknown interrupt type, using gpio");
++	}
++	wl1271_info("inband_irq: %d", wl->inband_irq);
++	if (!wl->inband_irq) {
++		ret = request_threaded_irq(wl->irq, wl12xx_hardirq, wlcore_irq,
++					   irqflags,
++					   pdev->name, wl);
++		if (ret < 0) {
++			wl1271_error("request_irq() failed: %d", ret);
++			goto out;
++
++		}
+ 
+ #ifdef CONFIG_PM
+-	ret = enable_irq_wake(wl->irq);
+-	if (!ret) {
+-		wl->irq_wake_enabled = true;
+-		device_init_wakeup(wl->dev, 1);
+-		if (pdata->pwr_in_suspend) {
+-			wl->hw->wiphy->wowlan.flags = WIPHY_WOWLAN_ANY;
+-			wl->hw->wiphy->wowlan.n_patterns =
+-				WL1271_MAX_RX_FILTERS;
+-			wl->hw->wiphy->wowlan.pattern_min_len = 1;
+-			wl->hw->wiphy->wowlan.pattern_max_len =
+-				WL1271_RX_FILTER_MAX_PATTERN_SIZE;
++		ret = enable_irq_wake(wl->irq);
++		if (!ret) {
++			wl->irq_wake_enabled = true;
++			device_init_wakeup(wl->dev, 1);
++			if (pdata->pwr_in_suspend) {
++				wl->hw->wiphy->wowlan.flags = WIPHY_WOWLAN_ANY;
++				wl->hw->wiphy->wowlan.n_patterns =
++					WL1271_MAX_RX_FILTERS;
++				wl->hw->wiphy->wowlan.pattern_min_len = 1;
++				wl->hw->wiphy->wowlan.pattern_max_len =
++					WL1271_RX_FILTER_MAX_PATTERN_SIZE;
++			}
++
+ 		}
+-	}
+ #endif
+-	disable_irq(wl->irq);
++		disable_irq(wl->irq);
++	}
+ 
+ 	ret = wl12xx_get_hw_info(wl);
+ 	if (ret < 0) {
+@@ -6518,7 +6532,8 @@ out_unreg:
+ 	wl1271_unregister_hw(wl);
+ 
+ out_irq:
+-	free_irq(wl->irq, wl);
++	if (!wl->inband_irq)
++		free_irq(wl->irq, wl);
+ 
+ out:
+ 	return ret;
+@@ -6531,10 +6546,12 @@ int __devexit wlcore_remove(struct platform_device *pdev)
+ 
+ 	if (wl->irq_wake_enabled) {
+ 		device_init_wakeup(wl->dev, 0);
+-		disable_irq_wake(wl->irq);
++		if (!wl->inband_irq)
++			disable_irq_wake(wl->irq);
+ 	}
+ 	wl1271_unregister_hw(wl);
+-	free_irq(wl->irq, wl);
++	if (!wl->inband_irq)
++		free_irq(wl->irq, wl);
+ 	wlcore_free_hw(wl);
+ 
+ 	return 0;
+@@ -6553,7 +6570,11 @@ MODULE_PARM_DESC(fwlog,
+ module_param(fwlog_mem_blocks, int, S_IRUSR | S_IWUSR);
+ MODULE_PARM_DESC(fwlog_mem_blocks, "fwlog mem_blocks");
+ 
+-module_param(bug_on_recovery, int, S_IRUSR | S_IWUSR);
++module_param_named(irq, irq_param, charp, S_IRUSR);
++MODULE_PARM_DESC(irq,
++		 "Set the irq type: sdio or gpio (default)");
++
++module_param(bug_on_recovery, bool, S_IRUSR | S_IWUSR);
+ MODULE_PARM_DESC(bug_on_recovery, "BUG() on fw recovery");
+ 
+ module_param(no_recovery, int, S_IRUSR | S_IWUSR);
+diff --git a/drivers/net/wireless/ti/wlcore/sdio.c b/drivers/net/wireless/ti/wlcore/sdio.c
+index 73ace4b..a9d9ece 100644
+--- a/drivers/net/wireless/ti/wlcore/sdio.c
++++ b/drivers/net/wireless/ti/wlcore/sdio.c
+@@ -52,6 +52,10 @@ static bool dump = false;
+ struct wl12xx_sdio_glue {
+ 	struct device *dev;
+ 	struct platform_device *core;
++
++	irq_handler_t handler;
++	irq_handler_t thread_fn;
++	void *irq_cookie;
+ };
+ 
+ static const struct sdio_device_id wl1271_devices[] __devinitconst = {
+@@ -207,11 +211,62 @@ static int wl12xx_sdio_set_power(struct device *child, bool enable)
+ 		return wl12xx_sdio_power_off(glue);
+ }
+ 
++static void wl12xx_sdio_interrupt(struct sdio_func *func)
++{
++	struct wl12xx_sdio_glue *glue = sdio_get_drvdata(func);
++	irqreturn_t ret;
++
++	if (WARN_ON(!glue->handler || !glue->thread_fn))
++		return;
++
++	ret = glue->handler(0, glue->irq_cookie);
++	if (ret == IRQ_WAKE_THREAD) {
++		sdio_release_host(func);
++		glue->thread_fn(0, glue->irq_cookie);
++		sdio_claim_host(func);
++	}
++}
++
++void wl12xx_sdio_request_irq(struct device *child,
++			     irq_handler_t handler,
++			     irq_handler_t thread_fn,
++			     void *cookie)
++{
++	struct wl12xx_sdio_glue *glue = dev_get_drvdata(child->parent);
++	struct sdio_func *func = dev_to_sdio_func(glue->dev);
++	int ret;
++
++	sdio_claim_host(func);
++	glue->handler = handler;
++	glue->thread_fn = thread_fn;
++	glue->irq_cookie = cookie;
++	ret = sdio_claim_irq(func, wl12xx_sdio_interrupt);
++	sdio_release_host(func);
++	printk("claiming sdio irq (func=%d). ret=%d\n", func->num, ret);
++}
++
++static void wl12xx_sdio_free_irq(struct device *child)
++{
++	struct wl12xx_sdio_glue *glue = dev_get_drvdata(child->parent);
++	struct sdio_func *func = dev_to_sdio_func(glue->dev);
++
++	printk("releasing sdio irq\n");
++	sdio_claim_host(func);
++	sdio_release_irq(func);
++	glue->handler = NULL;
++	glue->thread_fn = NULL;
++	glue->irq_cookie = NULL;
++	sdio_release_host(func);
++}
++
++
+ static struct wl1271_if_operations sdio_ops = {
+ 	.read		= wl12xx_sdio_raw_read,
+ 	.write		= wl12xx_sdio_raw_write,
+ 	.power		= wl12xx_sdio_set_power,
+ 	.set_block_size = wl1271_sdio_set_block_size,
++	.request_inband_irq	= wl12xx_sdio_request_irq,
++	.free_inband_irq	= wl12xx_sdio_free_irq,
+ };
+ 
+ static int __devinit wl1271_probe(struct sdio_func *func,
+diff --git a/drivers/net/wireless/ti/wlcore/wlcore.h b/drivers/net/wireless/ti/wlcore/wlcore.h
+index 6ea771b..c700f15 100644
+--- a/drivers/net/wireless/ti/wlcore/wlcore.h
++++ b/drivers/net/wireless/ti/wlcore/wlcore.h
+@@ -177,6 +177,7 @@ struct wl1271 {
+ 	struct wl1271_if_operations *if_ops;
+ 
+ 	void (*set_power)(bool enable);
++	bool inband_irq;
+ 	int irq;
+ 
+ 	spinlock_t wl_lock;
+@@ -478,6 +479,8 @@ int wlcore_set_key(struct wl1271 *wl, enum set_key_cmd cmd,
+ void wlcore_regdomain_config(struct wl1271 *wl);
+ void wlcore_update_inconn_sta(struct wl1271 *wl, struct wl12xx_vif *wlvif,
+ 			      struct wl1271_station *wl_sta, bool in_conn);
++irqreturn_t wl12xx_hardirq(int irq, void *cookie);
++irqreturn_t wlcore_irq(int irq, void *cookie);
+ 
+ static inline void
+ wlcore_set_ht_cap(struct wl1271 *wl, enum ieee80211_band band,
+diff --git a/drivers/net/wireless/ti/wlcore/wlcore_i.h b/drivers/net/wireless/ti/wlcore/wlcore_i.h
+index 17572f1..3551924 100644
+--- a/drivers/net/wireless/ti/wlcore/wlcore_i.h
++++ b/drivers/net/wireless/ti/wlcore/wlcore_i.h
+@@ -30,6 +30,7 @@
+ #include <linux/spinlock.h>
+ #include <linux/list.h>
+ #include <linux/bitops.h>
++#include <linux/interrupt.h>
+ #include <net/mac80211.h>
+ #ifdef CONFIG_HAS_WAKELOCK
+ #include <linux/wakelock.h>
+@@ -218,6 +219,11 @@ struct wl1271_if_operations {
+ 	void (*init)(struct device *child);
+ 	int (*power)(struct device *child, bool enable);
+ 	void (*set_block_size) (struct device *child, unsigned int blksz);
++	void (*request_inband_irq)(struct device *child,
++				   irq_handler_t handler,
++				   irq_handler_t thread_fn,
++				   void *cookie);
++	void (*free_inband_irq)(struct device *child);
+ };
+ 
+ #define MAX_NUM_KEYS 14
+-- 
+1.7.9.5
+

@@ -1,0 +1,51 @@
+From dd903ea34da17d044dc7bd697ae0f498313de7f3 Mon Sep 17 00:00:00 2001
+From: Ido Yariv <ido@wizery.com>
+Date: Tue, 17 Apr 2012 19:12:36 +0300
+Subject: [PATCH 08/14] wlcore: Fix a deadlock in sdio interrupt handler
+
+The sdio interrupt handler cancels the TX work synchronously, like
+wl1271_irq() does. This can lead to the following deadlock:
+
+- TX work is called and tries to wake up from ELP. It then waits until
+  an interrupt is received.
+- An interrupt is triggered, and the sdio interrupt handler is called.
+- The interrupt handler cancels TX work synchronously, waiting until TX
+  work exits. The ELP completion was not completed at this point,
+  leading to a deadlock.
+
+Fix this by cancelling TX after the hard irq handler is called,
+similarly to the out-of-band case.
+
+Signed-off-by: Ido Yariv <ido@wizery.com>
+---
+ drivers/net/wireless/ti/wlcore/sdio.c |    7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/wireless/ti/wlcore/sdio.c b/drivers/net/wireless/ti/wlcore/sdio.c
+index 343d303..29965d9 100644
+--- a/drivers/net/wireless/ti/wlcore/sdio.c
++++ b/drivers/net/wireless/ti/wlcore/sdio.c
+@@ -220,10 +220,6 @@ static void wl12xx_sdio_interrupt(struct sdio_func *func)
+ 
+ 	dev_dbg(&func->dev, "SDIO IRQ");
+ 
+-	/* TX might be handled here, avoid redundant work */
+-	set_bit(WL1271_FLAG_TX_PENDING, &wl->flags);
+-	cancel_work_sync(&wl->tx_work);
+-
+ 	if (WARN_ON(!glue->handler || !glue->thread_fn))
+ 		return;
+ 
+@@ -232,6 +228,9 @@ static void wl12xx_sdio_interrupt(struct sdio_func *func)
+ 
+ 	ret = glue->handler(0, glue->irq_cookie);
+ 	if (ret == IRQ_WAKE_THREAD) {
++		/* TX might be handled here, avoid redundant work */
++		set_bit(WL1271_FLAG_TX_PENDING, &wl->flags);
++		cancel_work_sync(&wl->tx_work);
+ 
+ 		mutex_lock(&wl->mutex);
+ 		if (sdio_claim_host_irq(func)) {
+-- 
+1.7.9.5
+

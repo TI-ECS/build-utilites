@@ -1,0 +1,45 @@
+From b21e165334eae4fca86ac15a198cbe0566a797b5 Mon Sep 17 00:00:00 2001
+From: eyal <eyal@eyal-d430.(none)>
+Date: Mon, 29 Jul 2013 11:47:33 +0300
+Subject: [PATCH 13/14] wlcore_sdio: use static platform data EXPERIMENTAL
+
+Working with standard linux based PC using the standard MMC/SD slot
+we may not have the wl12xx_platform_data information passed.
+Use a static structure inside the driver instead.
+
+Signed-off-by: Eyal Reizer <eyalr@ti.com>
+---
+ drivers/net/wireless/ti/wlcore/sdio.c |   10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/wireless/ti/wlcore/sdio.c b/drivers/net/wireless/ti/wlcore/sdio.c
+index 67121c6..6227be8 100644
+--- a/drivers/net/wireless/ti/wlcore/sdio.c
++++ b/drivers/net/wireless/ti/wlcore/sdio.c
+@@ -64,6 +64,12 @@ static const struct sdio_device_id wl1271_devices[] __devinitconst = {
+ };
+ MODULE_DEVICE_TABLE(sdio, wl1271_devices);
+ 
++/* Used instead wl12xx_platform_data is not initialized */
++struct wl12xx_platform_data wl18xx_wlan_data = {
++	/* WL8 HDK ref clock is 26 MHz */
++	.board_ref_clock = 1,
++};
++
+ static void wl1271_sdio_set_block_size(struct device *child,
+ 				       unsigned int blksz)
+ {
+@@ -414,8 +420,8 @@ static int __devinit wl1271_probe(struct sdio_func *func,
+ 	wlan_data = wl12xx_get_platform_data();
+ 	if (IS_ERR(wlan_data)) {
+ 		ret = PTR_ERR(wlan_data);
+-		dev_err(glue->dev, "missing wlan platform data: %d\n", ret);
+-		goto out_free_glue;
++		dev_dbg(glue->dev, "missing wlan platform data: %d using static strutcure\n", ret);
++		wlan_data = &wl18xx_wlan_data;
+ 	}
+ 
+ 	/* if sdio can keep power while host is suspended, enable wow */
+-- 
+1.7.9.5
+
