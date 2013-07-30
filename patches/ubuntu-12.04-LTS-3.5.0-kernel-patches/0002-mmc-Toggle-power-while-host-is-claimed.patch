@@ -1,0 +1,56 @@
+From 4d57fc441988755093fe62a37a5f009a30dae2ca Mon Sep 17 00:00:00 2001
+From: Ido Yariv <ido@wizery.com>
+Date: Thu, 22 Dec 2011 11:27:06 +0200
+Subject: [PATCH 2/6] mmc: Toggle power while host is claimed
+
+Runtime PM ops might be called when the host isn't claimed. This can be
+problematic, as the mmc disable/enable callbacks might be called
+concurrently.
+
+Fix this by claiming the host before calling mmc_power_*_host. Since
+it's perfectly fine to claim a host more than once by the same task, it
+should be safe to do even if the runtime PM functions are called with
+the host claimed.
+
+Signed-off-by: Ido Yariv <ido@wizery.com>
+Signed-off-by: Ido Reis <idor@ti.com>
+Signed-off-by: Eliad Peller <eliad@wizery.com>
+---
+ drivers/mmc/core/bus.c |   14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/mmc/core/bus.c b/drivers/mmc/core/bus.c
+index 9b68933..4a87c03 100644
+--- a/drivers/mmc/core/bus.c
++++ b/drivers/mmc/core/bus.c
+@@ -151,15 +151,25 @@ static int mmc_bus_resume(struct device *dev)
+ static int mmc_runtime_suspend(struct device *dev)
+ {
+ 	struct mmc_card *card = mmc_dev_to_card(dev);
++	int ret;
++
++	mmc_claim_host(card->host);
++	ret = mmc_power_save_host(card->host);
++	mmc_release_host(card->host);
+ 
+-	return mmc_power_save_host(card->host);
++	return ret;
+ }
+ 
+ static int mmc_runtime_resume(struct device *dev)
+ {
+ 	struct mmc_card *card = mmc_dev_to_card(dev);
++	int ret;
++
++	mmc_claim_host(card->host);
++	ret = mmc_power_restore_host(card->host);
++	mmc_release_host(card->host);
+ 
+-	return mmc_power_restore_host(card->host);
++	return ret;
+ }
+ 
+ static int mmc_runtime_idle(struct device *dev)
+-- 
+1.7.9.5
+

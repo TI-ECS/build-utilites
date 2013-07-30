@@ -1,0 +1,100 @@
+From 9be7b41e872e5245e37a0bbf1a3640e5c1b8e008 Mon Sep 17 00:00:00 2001
+From: Eliad Peller <eliad@wizery.com>
+Date: Sun, 22 Jan 2012 15:57:22 +0200
+Subject: [PATCH 1/6] sdio: add sdio_enable_irq/sdio_disable_irq functions
+
+In some cases, we'd like to disable the irq, without stopping
+the handler thread, as this is our own context (i.e. doing
+something similar to disable_irq_nosync).
+
+Add sdio_enable_irq/sdio_disable_irq functions, that only
+configure the irq, without touching the handler.
+
+(TODO: add the missing async stuff)
+
+Signed-off-by: Eliad Peller <eliad@wizery.com>
+---
+ drivers/mmc/core/sdio_irq.c   |   56 +++++++++++++++++++++++++++++++++++++++++
+ include/linux/mmc/sdio_func.h |    2 ++
+ 2 files changed, 58 insertions(+)
+
+diff --git a/drivers/mmc/core/sdio_irq.c b/drivers/mmc/core/sdio_irq.c
+index 3d8ceb4..1090ef3 100644
+--- a/drivers/mmc/core/sdio_irq.c
++++ b/drivers/mmc/core/sdio_irq.c
+@@ -312,3 +312,59 @@ int sdio_release_irq(struct sdio_func *func)
+ }
+ EXPORT_SYMBOL_GPL(sdio_release_irq);
+ 
++int sdio_enable_irq(struct sdio_func *func)
++{
++	int ret;
++	unsigned char reg;
++
++	BUG_ON(!func);
++	BUG_ON(!func->card);
++
++	pr_debug("SDIO: Enabling IRQ for %s...\n", sdio_func_id(func));
++
++	ret = mmc_io_rw_direct(func->card, 0, 0, SDIO_CCCR_IENx, 0, &reg);
++	if (ret)
++		return ret;
++
++	reg |= 1 << func->num;
++
++	reg |= 1; /* Master interrupt enable */
++
++	ret = mmc_io_rw_direct(func->card, 1, 0, SDIO_CCCR_IENx, reg, NULL);
++	if (ret)
++		return ret;
++
++	/* TODO: add async stuff */
++
++	return ret;
++}
++EXPORT_SYMBOL_GPL(sdio_enable_irq);
++
++int sdio_disable_irq(struct sdio_func *func)
++{
++	int ret;
++	unsigned char reg;
++
++	BUG_ON(!func);
++	BUG_ON(!func->card);
++
++	pr_debug("SDIO: Disabling IRQ for %s...\n", sdio_func_id(func));
++
++	ret = mmc_io_rw_direct(func->card, 0, 0, SDIO_CCCR_IENx, 0, &reg);
++	if (ret)
++		return ret;
++
++	reg &= ~(1 << func->num);
++
++	/* Disable master interrupt with the last function interrupt */
++	if (!(reg & 0xFE))
++		reg = 0;
++
++	ret = mmc_io_rw_direct(func->card, 1, 0, SDIO_CCCR_IENx, reg, NULL);
++	if (ret)
++		return ret;
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(sdio_disable_irq);
++
+diff --git a/include/linux/mmc/sdio_func.h b/include/linux/mmc/sdio_func.h
+index 50f0bc9..5bdfffc 100644
+--- a/include/linux/mmc/sdio_func.h
++++ b/include/linux/mmc/sdio_func.h
+@@ -126,6 +126,8 @@ extern int sdio_set_block_size(struct sdio_func *func, unsigned blksz);
+ 
+ extern int sdio_claim_irq(struct sdio_func *func, sdio_irq_handler_t *handler);
+ extern int sdio_release_irq(struct sdio_func *func);
++extern int sdio_enable_irq(struct sdio_func *func);
++extern int sdio_disable_irq(struct sdio_func *func);
+ 
+ extern unsigned int sdio_align_size(struct sdio_func *func, unsigned int sz);
+ 
+-- 
+1.7.9.5
+
