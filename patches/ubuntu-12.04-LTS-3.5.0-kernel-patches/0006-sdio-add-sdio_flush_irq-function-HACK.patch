@@ -1,0 +1,169 @@
+From 9b1c6f353fc43a71ab2044015b34b55df803f86c Mon Sep 17 00:00:00 2001
+From: Eliad Peller <eliad@wizery.com>
+Date: Tue, 6 Nov 2012 18:20:15 +0200
+Subject: [PATCH 6/6] sdio: add sdio_flush_irq function (HACK)
+
+add sdio_flush_irq function to allow flushing
+the sdio irq function.
+do it by setting a flag if an irq was signaled,
+and clear it after running the sdio_irq handlers.
+
+the function waits (on a waitqueue) for the flag
+to get cleared.
+
+Signed-off-by: Eliad Peller <eliad@wizery.com>
+---
+ drivers/mmc/core/host.c       |    3 +++
+ drivers/mmc/core/sdio_irq.c   |   54 +++++++++++++++++++++++++++++++++++++++++
+ include/linux/mmc/host.h      |   10 +++++++-
+ include/linux/mmc/sdio_func.h |    1 +
+ 4 files changed, 67 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/mmc/core/host.c b/drivers/mmc/core/host.c
+index 91c84c7..90f359d 100644
+--- a/drivers/mmc/core/host.c
++++ b/drivers/mmc/core/host.c
+@@ -345,6 +345,9 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
+ 	host->max_blk_size = 512;
+ 	host->max_blk_count = PAGE_CACHE_SIZE / 512;
+ 
++	spin_lock_init(&host->sdio_irq_running_lock);
++	init_waitqueue_head(&host->sdio_wq);
++
+ 	return host;
+ 
+ free:
+diff --git a/drivers/mmc/core/sdio_irq.c b/drivers/mmc/core/sdio_irq.c
+index ae37545..143551b 100644
+--- a/drivers/mmc/core/sdio_irq.c
++++ b/drivers/mmc/core/sdio_irq.c
+@@ -99,6 +99,7 @@ static int sdio_irq_thread(void *_host)
+ 	struct mmc_host *host = _host;
+ 	struct sched_param param = { .sched_priority = 1 };
+ 	unsigned long period, idle_period;
++	unsigned long flags;
+ 	int ret;
+ 
+ 	sched_setscheduler(current, SCHED_FIFO, &param);
+@@ -148,6 +149,10 @@ static int sdio_irq_thread(void *_host)
+ 				schedule_timeout(HZ);
+ 			set_current_state(TASK_RUNNING);
+ 		}
++			host->sdio_irq_running = false;
++			spin_lock_irqsave(&host->sdio_irq_running_lock, flags);
++			wake_up_all(&host->sdio_wq);
++			spin_unlock_irqrestore(&host->sdio_irq_running_lock, flags);
+ 
+ 		/*
+ 		 * Adaptive polling frequency based on the assumption
+@@ -166,6 +171,11 @@ static int sdio_irq_thread(void *_host)
+ 
+ 		set_current_state(TASK_INTERRUPTIBLE);
+ 		if (host->caps & MMC_CAP_SDIO_IRQ) {
++			spin_lock_irqsave(&host->sdio_irq_running_lock, flags);
++			host->sdio_irq_running = false;
++			wake_up_all(&host->sdio_wq);
++			spin_unlock_irqrestore(&host->sdio_irq_running_lock, flags);
++
+ 			mmc_host_clk_hold(host);
+ 			host->ops->enable_sdio_irq(host, 1);
+ 			mmc_host_clk_release(host);
+@@ -179,6 +189,11 @@ static int sdio_irq_thread(void *_host)
+ 		mmc_host_clk_hold(host);
+ 		host->ops->enable_sdio_irq(host, 0);
+ 		mmc_host_clk_release(host);
++
++		spin_lock_irqsave(&host->sdio_irq_running_lock, flags);
++		host->sdio_irq_running = false;
++		wake_up_all(&host->sdio_wq);
++		spin_unlock_irqrestore(&host->sdio_irq_running_lock, flags);
+ 	}
+ 
+ 	pr_debug("%s: IRQ thread exiting with code %d\n",
+@@ -413,3 +428,42 @@ int sdio_disable_irq(struct sdio_func *func)
+ }
+ EXPORT_SYMBOL_GPL(sdio_disable_irq);
+ 
++static bool sdio_irq_running(struct mmc_host *host)
++{
++	unsigned long flags;
++	bool running;
++
++	spin_lock_irqsave(&host->sdio_irq_running_lock, flags);
++	running = host->sdio_irq_running;
++	spin_unlock_irqrestore(&host->sdio_irq_running_lock, flags);
++
++	return running;
++}
++
++int sdio_flush_irq(struct sdio_func *func)
++{
++	struct mmc_host *host;
++
++	BUG_ON(!func);
++	BUG_ON(!func->card);
++
++	host = func->card->host;
++
++	while (sdio_irq_running(host)) {
++		DEFINE_WAIT(wait);
++
++		prepare_to_wait(&host->sdio_wq, &wait, TASK_UNINTERRUPTIBLE);
++		if (sdio_irq_running(host))
++			schedule();
++
++		/*
++		 * we should check the condition again, but this might be
++		 * a problem as a new irq might have come in the meantime
++		 */
++		finish_wait(&host->sdio_wq, &wait);
++
++		break;
++	}
++	return 0;
++}
++EXPORT_SYMBOL_GPL(sdio_flush_irq);
+diff --git a/include/linux/mmc/host.h b/include/linux/mmc/host.h
+index 0707d22..72dc1f4 100644
+--- a/include/linux/mmc/host.h
++++ b/include/linux/mmc/host.h
+@@ -300,6 +300,10 @@ struct mmc_host {
+ 	bool			sdio_irq_pending;
+ 	atomic_t		sdio_irq_thread_abort;
+ 
++	spinlock_t		sdio_irq_running_lock;
++	bool			sdio_irq_running;
++	wait_queue_head_t	sdio_wq;
++
+ 	mmc_pm_flag_t		pm_flags;	/* requested pm features */
+ 
+ #ifdef CONFIG_LEDS_TRIGGERS
+@@ -352,8 +356,12 @@ extern int mmc_cache_ctrl(struct mmc_host *, u8);
+ 
+ static inline void mmc_signal_sdio_irq(struct mmc_host *host)
+ {
++	unsigned long flags;
++
+ 	host->ops->enable_sdio_irq(host, 0);
+-	host->sdio_irq_pending = true;
++	spin_lock_irqsave(&host->sdio_irq_running_lock, flags);
++	host->sdio_irq_running = true;
++	spin_unlock_irqrestore(&host->sdio_irq_running_lock, flags);
+ 	wake_up_process(host->sdio_irq_thread);
+ }
+ 
+diff --git a/include/linux/mmc/sdio_func.h b/include/linux/mmc/sdio_func.h
+index b7db154..33271a6 100644
+--- a/include/linux/mmc/sdio_func.h
++++ b/include/linux/mmc/sdio_func.h
+@@ -132,6 +132,7 @@ extern int sdio_claim_irq_lockless(struct sdio_func *func,
+ extern int sdio_release_irq(struct sdio_func *func);
+ extern int sdio_enable_irq(struct sdio_func *func);
+ extern int sdio_disable_irq(struct sdio_func *func);
++extern int sdio_flush_irq(struct sdio_func *func);
+ 
+ extern unsigned int sdio_align_size(struct sdio_func *func, unsigned int sz);
+ 
+-- 
+1.7.9.5
+

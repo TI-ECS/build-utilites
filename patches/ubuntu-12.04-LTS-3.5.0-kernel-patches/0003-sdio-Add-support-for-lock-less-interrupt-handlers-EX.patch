@@ -1,0 +1,152 @@
+From 18de2b81bbc84bc38be63bb865995d642cf8eb20 Mon Sep 17 00:00:00 2001
+From: Ido Yariv <ido@wizery.com>
+Date: Mon, 2 Jan 2012 21:38:21 +0200
+Subject: [PATCH 3/6] sdio: Add support for lock-less interrupt handlers
+ *EXPERIMENTAL*
+
+SDIO interrupt handlers are called with the host being claimed. Some
+drivers may normally claim the host after acquiring a different lock.
+This means that the interrupt handler may not acquire this lock, as the
+locking order will be incorrect.
+
+Add support for lock-less interrupt handlers, which will be called
+without the host being claimed.
+
+Signed-off-by: Ido Reis <idor@ti.com>
+Signed-off-by: Eliad Peller <eliad@wizery.com>
+---
+ drivers/mmc/core/sdio_irq.c |   55 +++++++++++++++++++++++++++++++++++++++----
+ include/linux/mmc/card.h    |    1 +
+ 2 files changed, 51 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/mmc/core/sdio_irq.c b/drivers/mmc/core/sdio_irq.c
+index 1090ef3..ae37545 100644
+--- a/drivers/mmc/core/sdio_irq.c
++++ b/drivers/mmc/core/sdio_irq.c
+@@ -32,7 +32,6 @@ static int process_sdio_pending_irqs(struct mmc_host *host)
+ {
+ 	struct mmc_card *card = host->card;
+ 	int i, ret, count;
+-	unsigned char pending;
+ 	struct sdio_func *func;
+ 
+ 	/*
+@@ -46,7 +45,9 @@ static int process_sdio_pending_irqs(struct mmc_host *host)
+ 		return 1;
+ 	}
+ 
+-	ret = mmc_io_rw_direct(card, 0, 0, SDIO_CCCR_INTx, 0, &pending);
++	card->pending_int = 0;
++	ret = mmc_io_rw_direct(card, 0, 0, SDIO_CCCR_INTx, 0,
++		&card->pending_int);
+ 	if (ret) {
+ 		pr_debug("%s: error %d reading SDIO_CCCR_INTx\n",
+ 		       mmc_card_id(card), ret);
+@@ -55,7 +56,7 @@ static int process_sdio_pending_irqs(struct mmc_host *host)
+ 
+ 	count = 0;
+ 	for (i = 1; i <= 7; i++) {
+-		if (pending & (1 << i)) {
++		if (card->pending_int & (1 << i)) {
+ 			func = card->sdio_func[i - 1];
+ 			if (!func) {
+ 				pr_warning("%s: pending IRQ for "
+@@ -65,7 +66,7 @@ static int process_sdio_pending_irqs(struct mmc_host *host)
+ 			} else if (func->irq_handler) {
+ 				func->irq_handler(func);
+ 				count++;
+-			} else {
++			} else if (!func->irq_handler_ll) {
+ 				pr_warning("%s: pending IRQ with no handler\n",
+ 				       sdio_func_id(func));
+ 				ret = -EINVAL;
+@@ -79,6 +80,20 @@ static int process_sdio_pending_irqs(struct mmc_host *host)
+ 	return ret;
+ }
+ 
++static void call_sdio_lockless_irqs(struct mmc_card *card)
++{
++	int i;
++
++	for (i = 1; i <= 7; i++) {
++		if (card->pending_int & (1 << i)) {
++			struct sdio_func *func = card->sdio_func[i - 1];
++			if (func && func->irq_handler_ll) {
++				func->irq_handler_ll(func);
++			}
++		}
++	}
++}
++
+ static int sdio_irq_thread(void *_host)
+ {
+ 	struct mmc_host *host = _host;
+@@ -121,6 +136,7 @@ static int sdio_irq_thread(void *_host)
+ 		ret = process_sdio_pending_irqs(host);
+ 		host->sdio_irq_pending = false;
+ 		mmc_release_host(host);
++		call_sdio_lockless_irqs(host->card);
+ 
+ 		/*
+ 		 * Give other threads a chance to run in the presence of
+@@ -273,6 +289,34 @@ int sdio_claim_irq(struct sdio_func *func, sdio_irq_handler_t *handler)
+ EXPORT_SYMBOL_GPL(sdio_claim_irq);
+ 
+ /**
++ *	sdio_claim_irq_lockless - claim the IRQ for a SDIO function
++ *	@func: SDIO function
++ *	@handler: IRQ handler callback
++ *
++ *	Claim and activate the IRQ for the given SDIO function. The provided
++ *	handler will be called when that IRQ is asserted. The host is not
++ *	claimed when the handler is called so the handler might need to call
++ *	sdio_claim_host() and sdio_release_host().
++ */
++int sdio_claim_irq_lockless(struct sdio_func *func, sdio_irq_handler_t *handler)
++{
++	int ret;
++
++	if (func->irq_handler_ll) {
++		pr_debug("SDIO: IRQ for %s already in use.\n", sdio_func_id(func));
++		return -EBUSY;
++	}
++
++	func->irq_handler_ll = handler;
++	ret = sdio_claim_irq(func, NULL);
++	if (ret)
++		func->irq_handler_ll = NULL;
++
++	return ret;
++}
++EXPORT_SYMBOL_GPL(sdio_claim_irq_lockless);
++
++/**
+  *	sdio_release_irq - release the IRQ for a SDIO function
+  *	@func: SDIO function
+  *
+@@ -288,8 +332,9 @@ int sdio_release_irq(struct sdio_func *func)
+ 
+ 	pr_debug("SDIO: Disabling IRQ for %s...\n", sdio_func_id(func));
+ 
+-	if (func->irq_handler) {
++	if (func->irq_handler || func->irq_handler_ll) {
+ 		func->irq_handler = NULL;
++		func->irq_handler_ll = NULL;
+ 		sdio_card_irq_put(func->card);
+ 		sdio_single_irq_set(func->card);
+ 	}
+diff --git a/include/linux/mmc/card.h b/include/linux/mmc/card.h
+index d76513b..236bdb7 100644
+--- a/include/linux/mmc/card.h
++++ b/include/linux/mmc/card.h
+@@ -272,6 +272,7 @@ struct mmc_card {
+ 	unsigned int		sd_bus_speed;	/* Bus Speed Mode set for the card */
+ 
+ 	struct dentry		*debugfs_root;
++	unsigned char		pending_int;	/* pending sdio interrupts */
+ 	struct mmc_part	part[MMC_NUM_PHY_PARTITION]; /* physical partitions */
+ 	unsigned int    nr_parts;
+ };
+-- 
+1.7.9.5
+
