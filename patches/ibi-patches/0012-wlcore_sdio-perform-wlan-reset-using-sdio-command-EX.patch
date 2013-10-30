@@ -1,0 +1,61 @@
+From 0750680a194f6d7846798848b8a0c9ecf69f7f16 Mon Sep 17 00:00:00 2001
+From: eyal <eyal@eyal-d430.(none)>
+Date: Mon, 29 Jul 2013 13:35:37 +0300
+Subject: [PATCH 12/14] wlcore_sdio: perform wlan reset using sdio command
+ EXPERIMENTAL
+
+When interfacing the wl18xx module to a PC using the MMC/SD slot
+a gpio for wlan_reset is not available.
+Instaed, perform wlan reset by issuing an sdio write command with a value of
+0x4 to address 0x1fffc
+
+Signed-off-by: Eyal Reizer <eyalr@ti.com>
+---
+ drivers/net/wireless/ti/wlcore/sdio.c |   17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/drivers/net/wireless/ti/wlcore/sdio.c b/drivers/net/wireless/ti/wlcore/sdio.c
+index 859c4f2..024da86 100644
+--- a/drivers/net/wireless/ti/wlcore/sdio.c
++++ b/drivers/net/wireless/ti/wlcore/sdio.c
+@@ -48,6 +48,14 @@
+ #define SDIO_DEVICE_ID_TI_WL1271	0x4076
+ #endif
+ 
++#ifndef WLAN_SDIO_RESET_ADDRESS
++#define WLAN_SDIO_RESET_ADDRESS		0x1fff8
++#endif
++
++#ifndef WLAN_SDIO_RESET_CMD
++#define WLAN_SDIO_RESET_CMD		0x4
++#endif
++
+ static bool dump = false;
+ 
+ struct wl12xx_sdio_glue {
+@@ -161,6 +169,10 @@ static int wl12xx_sdio_power_on(struct wl12xx_sdio_glue *glue)
+ 
+ 	ret = pm_runtime_get_sync(&card->dev);
+ 	if (ret) {
++		printk(KERN_DEBUG "perform WLAN reset using an sdio command\n");
++		sdio_f0_writeb(func, WLAN_SDIO_RESET_CMD, WLAN_SDIO_RESET_ADDRESS, NULL);
++		mdelay(150);
++
+ 		/*
+ 		 * Runtime PM might be temporarily disabled, or the device
+ 		 * might have a positive reference counter. Make sure it is
+@@ -187,6 +199,11 @@ static int wl12xx_sdio_power_off(struct wl12xx_sdio_glue *glue)
+ 	struct mmc_card *card = func->card;
+ 
+ 	sdio_claim_host(func);
++
++	printk(KERN_DEBUG "perform WLAN reset using an sdio command\n");
++	sdio_f0_writeb(func, WLAN_SDIO_RESET_CMD, WLAN_SDIO_RESET_ADDRESS, NULL);
++	mdelay(150);
++
+ 	sdio_disable_func(func);
+ 
+ 	/* Power off the card manually in case it wasn't powered off above */
+-- 
+1.7.9.5
+

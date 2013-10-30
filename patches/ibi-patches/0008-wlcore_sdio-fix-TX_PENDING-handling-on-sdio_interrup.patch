@@ -1,0 +1,92 @@
+From b242d46b82e25e3b537264efe0e630479d2af8af Mon Sep 17 00:00:00 2001
+From: Eliad Peller <eliad@wizery.com>
+Date: Mon, 30 Jul 2012 20:35:54 +0300
+Subject: [PATCH 08/14] wlcore_sdio: fix TX_PENDING handling on sdio_interrupt
+
+On wl12xx_sdio_interrupt we set WL1271_FLAG_TX_PENDING
+in order to prevent redundant tx_work. However, since
+the respective set_bit() is missing, further tx_work
+was never enqueued.
+
+In order to add the missing code (clear bit and re-enqueue
+tx_work) we have to use the non-exported inline function
+wl1271_tx_total_queue_count(). export it by defining a
+new exported wrapper function (wlcore_tx_queue_count).
+
+Signed-off-by: Eliad Peller <eliad@wizery.com>
+---
+ drivers/net/wireless/ti/wlcore/sdio.c   |   15 +++++++++++++++
+ drivers/net/wireless/ti/wlcore/tx.c     |   10 ++++++++++
+ drivers/net/wireless/ti/wlcore/wlcore.h |    2 ++
+ 3 files changed, 27 insertions(+)
+
+diff --git a/drivers/net/wireless/ti/wlcore/sdio.c b/drivers/net/wireless/ti/wlcore/sdio.c
+index bc6dafe..0fcf9b6 100644
+--- a/drivers/net/wireless/ti/wlcore/sdio.c
++++ b/drivers/net/wireless/ti/wlcore/sdio.c
+@@ -216,6 +216,7 @@ static void wl12xx_sdio_interrupt(struct sdio_func *func)
+ {
+ 	struct wl12xx_sdio_glue *glue = sdio_get_drvdata(func);
+ 	struct wl1271 *wl = platform_get_drvdata(glue->core);
++	unsigned long flags;
+ 	irqreturn_t ret;
+ 
+ 	dev_dbg(&func->dev, "SDIO IRQ");
+@@ -244,6 +245,20 @@ static void wl12xx_sdio_interrupt(struct sdio_func *func)
+ 		}
+ 		wlcore_irq_locked(wl);
+ 		sdio_release_host(func);
++
++		spin_lock_irqsave(&wl->wl_lock, flags);
++		/* In case TX was not handled here, queue TX work */
++		clear_bit(WL1271_FLAG_TX_PENDING, &wl->flags);
++		if (!test_bit(WL1271_FLAG_FW_TX_BUSY, &wl->flags) &&
++		    wlcore_tx_queue_count(wl) > 0)
++			ieee80211_queue_work(wl->hw, &wl->tx_work);
++
++#ifdef CONFIG_HAS_WAKELOCK
++		if (test_and_clear_bit(WL1271_FLAG_WAKE_LOCK, &wl->flags))
++			wake_unlock(&wl->wake_lock);
++#endif
++		spin_unlock_irqrestore(&wl->wl_lock, flags);
++
+ 		mutex_unlock(&wl->mutex);
+ 	}
+ 	/*
+diff --git a/drivers/net/wireless/ti/wlcore/tx.c b/drivers/net/wireless/ti/wlcore/tx.c
+index 201bc05..bdd8bdc 100644
+--- a/drivers/net/wireless/ti/wlcore/tx.c
++++ b/drivers/net/wireless/ti/wlcore/tx.c
+@@ -1207,6 +1207,16 @@ out:
+ }
+ EXPORT_SYMBOL_GPL(wl1271_tx_flush);
+ 
++/*
++ * this is just a wrapper in order to export wl1271_tx_total_queue_count
++ * while keeping it inline (for other users)
++ */
++int wlcore_tx_queue_count(struct wl1271 *wl)
++{
++	return wl1271_tx_total_queue_count(wl);
++}
++EXPORT_SYMBOL_GPL(wlcore_tx_queue_count);
++
+ u32 wl1271_tx_min_rate_get(struct wl1271 *wl, u32 rate_set)
+ {
+ 	if (WARN_ON(!rate_set))
+diff --git a/drivers/net/wireless/ti/wlcore/wlcore.h b/drivers/net/wireless/ti/wlcore/wlcore.h
+index 838c779..8a681d3 100644
+--- a/drivers/net/wireless/ti/wlcore/wlcore.h
++++ b/drivers/net/wireless/ti/wlcore/wlcore.h
+@@ -527,6 +527,8 @@ void wlcore_update_inconn_sta(struct wl1271 *wl, struct wl12xx_vif *wlvif,
+ irqreturn_t wlcore_hardirq(int irq, void *cookie);
+ irqreturn_t wlcore_irq(int irq, void *cookie);
+ int wlcore_irq_locked(struct wl1271 *wl);
++/* exported wrapper for wl1271_tx_total_queue_count */
++int wlcore_tx_queue_count(struct wl1271 *wl);
+ 
+ static inline void
+ wlcore_set_ht_cap(struct wl1271 *wl, enum ieee80211_band band,
+-- 
+1.7.9.5
+

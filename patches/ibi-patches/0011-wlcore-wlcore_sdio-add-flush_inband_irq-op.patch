@@ -1,0 +1,108 @@
+From 30e78ee17c7106ad58a969dd47151ff2ff069968 Mon Sep 17 00:00:00 2001
+From: Eliad Peller <eliad@wizery.com>
+Date: Tue, 6 Nov 2012 18:51:32 +0200
+Subject: [PATCH 11/14] wlcore/wlcore_sdio: add flush_inband_irq op
+
+add flush_inband_irq() op and use it on suspend to
+flush the sdio irq thread instead of disable+enable.
+
+(disable/enable might get called while the chip is
+in elp, causing the SDIO_CCCR_INTx read (needed for
+determining pending sdio irqs) to fail)
+
+Signed-off-by: Eliad Peller <eliad@wizery.com>
+---
+ drivers/net/wireless/ti/wlcore/main.c     |   28 +++++++++++++++++-----------
+ drivers/net/wireless/ti/wlcore/sdio.c     |   15 +++++++++++++++
+ drivers/net/wireless/ti/wlcore/wlcore_i.h |    1 +
+ 3 files changed, 33 insertions(+), 11 deletions(-)
+
+diff --git a/drivers/net/wireless/ti/wlcore/main.c b/drivers/net/wireless/ti/wlcore/main.c
+index 630daad..912cc62 100644
+--- a/drivers/net/wireless/ti/wlcore/main.c
++++ b/drivers/net/wireless/ti/wlcore/main.c
+@@ -1824,19 +1824,25 @@ static int wl1271_op_suspend(struct ieee80211_hw *hw,
+ 	/* flush any remaining work */
+ 	wl1271_debug(DEBUG_MAC80211, "flushing remaining works");
+ 
+-	/*
+-	 * disable and re-enable interrupts in order to flush
+-	 * the threaded_irq
+-	 */
+-	wlcore_disable_interrupts(wl);
++	if (!wl->inband_irq) {
++		/*
++		 * disable and re-enable interrupts in order to flush
++		 * the threaded_irq
++		 */
++		wlcore_disable_interrupts(wl);
+ 
+-	/*
+-	 * set suspended flag to avoid triggering a new threaded_irq
+-	 * work. no need for spinlock as interrupts are disabled.
+-	 */
+-	set_bit(WL1271_FLAG_SUSPENDED, &wl->flags);
++		/*
++		 * set suspended flag to avoid triggering a new threaded_irq
++		 * work. no need for spinlock as interrupts are disabled.
++		 */
++		set_bit(WL1271_FLAG_SUSPENDED, &wl->flags);
++
++		wlcore_enable_interrupts(wl);
++	} else {
++		set_bit(WL1271_FLAG_SUSPENDED, &wl->flags);
++		wl->if_ops->flush_inband_irq(wl->dev);
++	}
+ 
+-	wlcore_enable_interrupts(wl);
+ 	flush_work(&wl->tx_work);
+ 	flush_delayed_work(&wl->elp_work);
+ 
+diff --git a/drivers/net/wireless/ti/wlcore/sdio.c b/drivers/net/wireless/ti/wlcore/sdio.c
+index 37caae8..859c4f2 100644
+--- a/drivers/net/wireless/ti/wlcore/sdio.c
++++ b/drivers/net/wireless/ti/wlcore/sdio.c
+@@ -356,6 +356,20 @@ out:
+ 	sdio_release_host(func);
+ }
+ 
++static void wl12xx_sdio_flush_irq(struct device *child)
++{
++	struct wl12xx_sdio_glue *glue = dev_get_drvdata(child->parent);
++	struct sdio_func *func = dev_to_sdio_func(glue->dev);
++	struct wl1271 *wl = platform_get_drvdata(glue->core);
++
++	dev_info(&func->dev, "flushing sdio irq");
++
++	if (WARN_ON(!wl->ibi_enabled))
++		return;
++
++	sdio_flush_irq(func);
++}
++
+ static struct wl1271_if_operations sdio_ops = {
+ 	.read		= wl12xx_sdio_raw_read,
+ 	.write		= wl12xx_sdio_raw_write,
+@@ -365,6 +379,7 @@ static struct wl1271_if_operations sdio_ops = {
+ 	.free_inband_irq	= wl12xx_sdio_free_irq,
+ 	.disable_inband_irq	= wl12xx_sdio_disable_irq,
+ 	.enable_inband_irq	= wl12xx_sdio_enable_irq,
++	.flush_inband_irq	= wl12xx_sdio_flush_irq,
+ };
+ 
+ static const struct of_device_id wlcore_of_match[] = {
+diff --git a/drivers/net/wireless/ti/wlcore/wlcore_i.h b/drivers/net/wireless/ti/wlcore/wlcore_i.h
+index a01fb93..4b198ac 100644
+--- a/drivers/net/wireless/ti/wlcore/wlcore_i.h
++++ b/drivers/net/wireless/ti/wlcore/wlcore_i.h
+@@ -218,6 +218,7 @@ struct wl1271_if_operations {
+ 	void (*free_inband_irq)(struct device *child);
+ 	void (*disable_inband_irq)(struct device *child);
+ 	void (*enable_inband_irq)(struct device *child);
++	void (*flush_inband_irq)(struct device *child);
+ };
+ 
+ struct wlcore_platdev_data {
+-- 
+1.7.9.5
+

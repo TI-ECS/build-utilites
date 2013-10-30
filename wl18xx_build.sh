@@ -95,6 +95,7 @@ function compat-wireless()
 		./scripts/driver-select wl18xx
 		echo "# Use platform data with kernels older then 3.8 that dont use DT" >> config.mk
 		echo "export CONFIG_WILINK_PLATFORM_DATA=y" >> config.mk
+		for i in ${old_dir}/patches/ibi-patches/*.patch; do patch -p1 -i $i; done || exit 1
 		make KLIB_BUILD=${KLIB_BUILD} KLIB=${ROOTFS} || exit 1
 	fi
 	if [ x"$stage" = "xinstall"  -o x"$stage" = "xall" ]

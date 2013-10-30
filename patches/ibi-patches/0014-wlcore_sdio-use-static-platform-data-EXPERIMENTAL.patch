@@ -1,0 +1,66 @@
+From e80d4819075509d10f1d91f3f672fd3b6ff5bb37 Mon Sep 17 00:00:00 2001
+From: eyal <eyal@eyal-d430.(none)>
+Date: Wed, 30 Oct 2013 15:05:06 +0200
+Subject: [PATCH 14/14] wlcore_sdio: use static platform data EXPERIMENTAL
+
+Working with standard linux based PC using the standard MMC/SD slot
+we may not have the wl12xx_platform_data information passed.
+Use a static structure inside the driver instead.
+
+Signed-off-by: Eyal Reizer <eyalr@ti.com>
+---
+ drivers/net/wireless/ti/wlcore/sdio.c |   17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/wireless/ti/wlcore/sdio.c b/drivers/net/wireless/ti/wlcore/sdio.c
+index 8b618fc..330cf43 100644
+--- a/drivers/net/wireless/ti/wlcore/sdio.c
++++ b/drivers/net/wireless/ti/wlcore/sdio.c
+@@ -72,6 +72,12 @@ static const struct sdio_device_id wl1271_devices[] = {
+ };
+ MODULE_DEVICE_TABLE(sdio, wl1271_devices);
+ 
++/* Used instead wl12xx_platform_data is not initialized */
++struct wl12xx_platform_data wl18xx_wlan_data = {
++	/* WL8 HDK ref clock is 26 MHz */
++	.board_ref_clock = 1,
++};
++
+ static void wl1271_sdio_set_block_size(struct device *child,
+ 				       unsigned int blksz)
+ {
+@@ -326,7 +332,7 @@ int wl12xx_sdio_request_irq(struct device *child,
+ 	glue->thread_fn = thread_fn;
+ 	glue->irq_cookie = cookie;
+ 	ret = sdio_claim_irq_lockless(func, wl12xx_sdio_interrupt);
+-out:
++
+ 	sdio_release_host(func);
+ 	printk("claiming sdio irq (func=%d). ret=%d\n", func->num, ret);
+ 	return ret;
+@@ -507,8 +513,10 @@ static int wl1271_probe(struct sdio_func *func,
+ 	func->card->quirks |= MMC_QUIRK_BLKSZ_FOR_BYTE_MODE;
+ 
+ 	pdev_data.pdata = get_platform_data(&func->dev);
+-	if (!pdev_data.pdata)
+-		goto out_free_glue;
++	if (!pdev_data.pdata) {
++		dev_err(&func->dev, "missing wlan platform data. using static strutcure\n");
++		pdev_data.pdata = &wl18xx_wlan_data;
++	}
+ 
+ 	/* if sdio can keep power while host is suspended, enable wow */
+ 	mmcflags = sdio_get_host_pm_caps(func);
+@@ -591,7 +599,8 @@ static void wl1271_remove(struct sdio_func *func)
+ 	pm_runtime_get_noresume(&func->dev);
+ 
+ 	platform_device_unregister(glue->core);
+-	del_platform_data(pdata);
++	if (pdata != &wl18xx_wlan_data)
++		del_platform_data(pdata);
+ 	kfree(glue);
+ }
+ 
+-- 
+1.7.9.5
+

@@ -1,0 +1,74 @@
+From 04e787d99b155177608d42e8f0362c05fe2b0c91 Mon Sep 17 00:00:00 2001
+From: eyal <eyal@eyal-d430.(none)>
+Date: Wed, 30 Oct 2013 14:08:55 +0200
+Subject: [PATCH 13/14] sdio: adapt sdio irq handler based for new interrupt
+ handling
+
+wlcore_irq has changed since rebasing the driver on k3.8.
+the sdio ibi handler in the driver is using a similar implementation.
+Adjust the sdio inband interrupt handler accordingly.
+
+Signed-off-by: eyal reizer <eyalr@ti.com>
+---
+ drivers/net/wireless/ti/wlcore/sdio.c |   28 +++++++++++++++++++++++++---
+ 1 file changed, 25 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/wireless/ti/wlcore/sdio.c b/drivers/net/wireless/ti/wlcore/sdio.c
+index 024da86..8b618fc 100644
+--- a/drivers/net/wireless/ti/wlcore/sdio.c
++++ b/drivers/net/wireless/ti/wlcore/sdio.c
+@@ -237,7 +237,6 @@ static void wl12xx_sdio_interrupt(struct sdio_func *func)
+ 	irqreturn_t ret;
+ 
+ 	dev_dbg(&func->dev, "SDIO IRQ");
+-
+ 	if (WARN_ON(!glue->handler || !glue->thread_fn))
+ 		return;
+ 
+@@ -246,10 +245,33 @@ static void wl12xx_sdio_interrupt(struct sdio_func *func)
+ 
+ 	ret = glue->handler(0, glue->irq_cookie);
+ 	if (ret == IRQ_WAKE_THREAD) {
++		/* complete the ELP completion */
++		spin_lock_irqsave(&wl->wl_lock, flags);
++		set_bit(WL1271_FLAG_IRQ_RUNNING, &wl->flags);
++		if (wl->elp_compl) {
++			complete(wl->elp_compl);
++			wl->elp_compl = NULL;
++		}
++
++		if (test_bit(WL1271_FLAG_SUSPENDED, &wl->flags)) {
++			/* don't enqueue a work right now. mark it as pending */
++			set_bit(WL1271_FLAG_PENDING_WORK, &wl->flags);
++			dev_dbg(&func->dev, "should not enqueue work");
++			if (!wl->inband_irq)
++				disable_irq_nosync(wl->irq);
++			pm_wakeup_event(wl->dev, 0);
++#ifdef CONFIG_HAS_WAKELOCK
++			if (!test_and_set_bit(WL1271_FLAG_WAKE_LOCK, &wl->flags))
++				wake_lock(&wl->wake_lock);
++#endif
++			spin_unlock_irqrestore(&wl->wl_lock, flags);
++			return;
++		}
++		spin_unlock_irqrestore(&wl->wl_lock, flags);
++
+ 		/* TX might be handled here, avoid redundant work */
+ 		set_bit(WL1271_FLAG_TX_PENDING, &wl->flags);
+ 		cancel_work_sync(&wl->tx_work);
+-
+ 		mutex_lock(&wl->mutex);
+ 		if (sdio_claim_host_irq(func)) {
+ 			/*
+@@ -260,7 +282,7 @@ static void wl12xx_sdio_interrupt(struct sdio_func *func)
+ 			mutex_unlock(&wl->mutex);
+ 			return;
+ 		}
+-		wlcore_irq_locked(wl);
++		ret = wlcore_irq_locked(wl);
+ 		sdio_release_host(func);
+ 
+ 		spin_lock_irqsave(&wl->wl_lock, flags);
+-- 
+1.7.9.5
+

@@ -1,0 +1,35 @@
+From 3490f51d2f48ab1c03d3fbef58b775a3ef9c6ae6 Mon Sep 17 00:00:00 2001
+From: Eliad Peller <eliad@wizery.com>
+Date: Tue, 6 Nov 2012 18:44:05 +0200
+Subject: [PATCH 10/14] wlcore_sdio: print sdio_release_irq ret value on error
+
+Signed-off-by: Eliad Peller <eliad@wizery.com>
+---
+ drivers/net/wireless/ti/wlcore/sdio.c |    8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/wireless/ti/wlcore/sdio.c b/drivers/net/wireless/ti/wlcore/sdio.c
+index f26e8bb..37caae8 100644
+--- a/drivers/net/wireless/ti/wlcore/sdio.c
++++ b/drivers/net/wireless/ti/wlcore/sdio.c
+@@ -298,11 +298,15 @@ static void wl12xx_sdio_free_irq(struct device *child)
+ 	struct wl12xx_sdio_glue *glue = dev_get_drvdata(child->parent);
+ 	struct sdio_func *func = dev_to_sdio_func(glue->dev);
+ 	struct wl1271 *wl = platform_get_drvdata(glue->core);
++	int ret;
+ 
+-	printk("releasing sdio irq ibi_enabled=%d\n", wl->ibi_enabled);
++	dev_info(&func->dev, "releasing sdio irq ibi_enabled=%d",
++		 wl->ibi_enabled);
+ 	sdio_claim_host(func);
+ 	wl->ibi_enabled--;
+-	sdio_release_irq(func);
++	ret = sdio_release_irq(func);
++	if (ret)
++		dev_info(&func->dev, "sdio_release_irq error! (%d)", ret);
+ 	glue->handler = NULL;
+ 	glue->thread_fn = NULL;
+ 	glue->irq_cookie = NULL;
+-- 
+1.7.9.5
+
