@@ -1,22 +1,22 @@
 #!/bin/bash
 
 declare -A wl18xx_download_target="git://github.com/TI-OpenLink/wl18xx.git"
-declare -A wl18xx_tag="ol_r8.a7.02"
+declare -A wl18xx_tag="ol_r8.a8.10"
 
 declare -A compatwireless_download_target="git://github.com/TI-OpenLink/compat-wireless.git"
-declare -A compat_wireless_tag="ol_r8.a7.02_34"
+declare -A compat_wireless_tag="ol_r8.a8.10_32"
 
 declare -A compat_download_target="git://github.com/TI-OpenLink/compat.git"
-declare -A compat_tag="ol_r8.a7.02"
+declare -A compat_tag="ol_r8.a8.10"
 
 declare -A ti_utils_download_target="git://github.com/TI-OpenLink/18xx-ti-utils.git"
-declare -A ti_utils_tag="ol_r8.a7.02"
+declare -A ti_utils_tag="ol_r8.a8.10"
 
 declare -A wl18xx_fw_download_target="git://github.com/TI-OpenLink/wl18xx_fw.git"
-declare -A wl18xx_fw_tag="ol_r8.a7.02"
+declare -A wl18xx_fw_tag="ol_r8.a8.10"
 
 declare -A hostap_download_target="git://github.com/TI-OpenLink/hostap.git"
-declare -A hostap_tag="ol_r8.a7.02"
+declare -A hostap_tag="ol_r8.a8.10"
 
 declare -A iw_download_target="git://git.sipsolutions.net/iw.git"
 declare -A iw_tag="0a236ef5f8e4ba7218aac7d0cdacf45673d5b35c"
