@@ -1,7 +1,7 @@
 #!/bin/bash
 
 declare -A wl18xx_download_target="git://github.com/TI-OpenLink/wl18xx.git"
-declare -A wl18xx_tag="ol_r8.a8.10"
+declare -A wl18xx_tag="ol_r8.a8.10_32"
 
 declare -A compatwireless_download_target="git://github.com/TI-OpenLink/compat-wireless.git"
 declare -A compat_wireless_tag="ol_r8.a8.10_32"
