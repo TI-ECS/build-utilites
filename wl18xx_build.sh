@@ -122,7 +122,7 @@ function crda ()
 	if [ x"$stage" = "xdownload"  -o x"$stage" = "xall" ]
 	then
 		download "http://wireless.kernel.org/download/crda/crda-1.1.1.tar.bz2" "crda-1.1.1.tar.bz2"
-                download "http://linuxwireless.org/download/wireless-regdb/regulatory.bins/2011.04.28-regulatory.bin" "2011.04.28-regulatory.bin"
+                download "http://wireless.kernel.org/download/wireless-regdb/regulatory.bins/2011.04.28-regulatory.bin" "2011.04.28-regulatory.bin"
 		tar xjf crda-1.1.1.tar.bz2
 		cd ${WORK_SPACE}/crda-1.1.1
 		cp ${WORK_SPACE}/2011.04.28-regulatory.bin .
