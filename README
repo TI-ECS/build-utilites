@@ -13,7 +13,7 @@ Usage: wl12xx_build.sh target <
 				wl12xx_modules
 				firmware
 				crda
-				callibrator >  action <download|build|install>
+				calibrator >  action <download|build|install>
 			all
 			clean-all
 
